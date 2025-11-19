@@ -91,7 +91,7 @@ const DashboardScreen = ({ navigation }) => {
       description: 'Gestión de riesgos',
     },
     {
-      title: 'Controles ISO 27002',
+      title: 'Controles ISO 27002:2013',
       icon: 'shield-checkmark',
       color: '#8B5CF6',
       screen: 'Controls',

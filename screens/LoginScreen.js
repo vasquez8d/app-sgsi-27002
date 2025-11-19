@@ -52,12 +52,15 @@ const LoginScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.spacer} />
+        
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="shield-checkmark" size={80} color={COLORS.primary} />
+            <Ionicons name="shield-checkmark" size={100} color={COLORS.primary} />
           </View>
           <Text style={styles.title}>SGSI ISO 27002</Text>
           <Text style={styles.subtitle}>Sistema de Gestión de Seguridad de la Información</Text>
+          <Text style={styles.isoVersion}>ISO/IEC 27002:2013</Text>
         </View>
 
         <View style={styles.form}>
@@ -96,7 +99,7 @@ const LoginScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Versión 1.0.0</Text>
+          <Text style={styles.footerText}>Versión 2.0.0</Text>
           <Text style={styles.footerText}>© 2025 SGSI Management System</Text>
         </View>
       </ScrollView>
@@ -111,21 +114,29 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: SPACING.lg,
+    paddingTop: SPACING.xl * 2,
+  },
+  spacer: {
+    flex: 0.3,
   },
   header: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.xl * 1.5,
   },
   logoContainer: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
-    fontSize: FONT_SIZES.xxl,
+    fontSize: FONT_SIZES.xxl * 1.1,
     fontWeight: '700',
     color: COLORS.primary,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
     textAlign: 'center',
   },
   subtitle: {
@@ -133,6 +144,7 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     textAlign: 'center',
     paddingHorizontal: SPACING.md,
+    marginTop: SPACING.xs,
   },
   form: {
     marginBottom: SPACING.xl,
@@ -158,6 +170,13 @@ const styles = StyleSheet.create({
   infoBold: {
     fontWeight: '700',
     color: COLORS.text,
+  },
+  isoVersion: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primary,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',

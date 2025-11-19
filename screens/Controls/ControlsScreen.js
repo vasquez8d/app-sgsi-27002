@@ -152,7 +152,7 @@ const ControlsScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Header 
-        title="Controles ISO 27002" 
+        title="Controles ISO 27002:2013" 
         subtitle={stats ? `${stats.percentage}% cumplimiento` : ''} 
         showBack 
         onBack={() => navigation.goBack()} 

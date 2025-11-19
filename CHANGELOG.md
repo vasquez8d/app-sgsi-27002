@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2025-11-19
+
+### 🔄 Changed - BREAKING CHANGES
+
+#### Database Migration
+- **Migrated from AsyncStorage to SQLite** for all modules
+- Complete database schema with 7 tables (users, team_members, scope, assets, policies, risks, controls)
+- Automatic initialization with ISO 27002:2013 catalog (114 controls)
+- Foreign key relationships between tables
+- Automatic timestamps (created_at, updated_at)
+
+#### Dependencies
+- **Updated to Expo SDK 51** (from SDK 49)
+- Added expo-sqlite ~14.0.6
+- Updated all React Native and Expo dependencies
+
+### ✨ Added
+
+#### Database Features
+- SQLite database with optimized queries
+- Helper functions (executeQuery, getAllRows, getFirstRow)
+- Database initialization on app startup
+- Default admin user (username: admin, password: admin123)
+- Automatic control catalog initialization
+
+#### Services
+- New `database.js` service with SQLite operations
+- SQL prepared statements for security
+- Transaction support
+- Error handling and logging
+
+### 🐛 Fixed
+
+#### Assets Module
+- Fixed NOT NULL constraint error when adding assets
+- Added automatic mapping between 'category' (UI) and 'type' (Database)
+- Improved error messages
+- Validation for required fields
+
+### 📚 Documentation
+- Added `SQLITE_MIGRATION.md` with complete migration guide
+- Updated technical documentation
+- Added database schema documentation
+
+### ⚠️ Notes
+- Existing data in AsyncStorage will NOT be migrated automatically
+- Users will need to re-enter their data
+- Authentication sessions are still stored in AsyncStorage for compatibility
+
+---
+
 ## [1.0.0] - 2025-11-16
 
 ### ✨ Added
