@@ -1,9 +1,9 @@
-import STORAGE_KEYS, { saveData, getData } from './storage';
+import { executeQuery, getAllRows, getFirstRow } from './database';
 import { generateId } from '../utils/helpers';
 
 export const getAssets = async () => {
   try {
-    const assets = await getData(STORAGE_KEYS.ASSETS);
+    const assets = getAllRows('SELECT * FROM assets ORDER BY created_at DESC');
     return assets || [];
   } catch (error) {
     console.error('Error getting assets:', error);
@@ -13,40 +13,53 @@ export const getAssets = async () => {
 
 export const addAsset = async (asset) => {
   try {
-    const assets = await getAssets();
-    const newAsset = {
-      id: generateId(),
-      ...asset,
-      createdAt: new Date().toISOString(),
-    };
-    assets.push(newAsset);
-    await saveData(STORAGE_KEYS.ASSETS, assets);
+    const id = generateId();
+    executeQuery(
+      `INSERT INTO assets (id, name, type, description, owner, location, criticality, value) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, asset.name, asset.type, asset.description || '', asset.owner || '', 
+       asset.location || '', asset.criticality || '', asset.value || '']
+    );
+    
+    const newAsset = getFirstRow('SELECT * FROM assets WHERE id = ?', [id]);
     return { success: true, asset: newAsset };
   } catch (error) {
+    console.error('Error adding asset:', error);
     return { success: false, error: 'Error al agregar activo' };
   }
 };
 
 export const updateAsset = async (id, updatedData) => {
   try {
-    const assets = await getAssets();
-    const index = assets.findIndex(a => a.id === id);
-    if (index !== -1) {
-      assets[index] = { ...assets[index], ...updatedData, updatedAt: new Date().toISOString() };
-      await saveData(STORAGE_KEYS.ASSETS, assets);
-      return { success: true, asset: assets[index] };
+    executeQuery(
+      `UPDATE assets SET 
+       name = COALESCE(?, name),
+       type = COALESCE(?, type),
+       description = COALESCE(?, description),
+       owner = COALESCE(?, owner),
+       location = COALESCE(?, location),
+       criticality = COALESCE(?, criticality),
+       value = COALESCE(?, value),
+       updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [updatedData.name, updatedData.type, updatedData.description, updatedData.owner,
+       updatedData.location, updatedData.criticality, updatedData.value, id]
+    );
+    
+    const updatedAsset = getFirstRow('SELECT * FROM assets WHERE id = ?', [id]);
+    if (updatedAsset) {
+      return { success: true, asset: updatedAsset };
     }
     return { success: false, error: 'Activo no encontrado' };
   } catch (error) {
+    console.error('Error updating asset:', error);
     return { success: false, error: 'Error al actualizar activo' };
   }
 };
 
 export const deleteAsset = async (id) => {
   try {
-    const assets = await getAssets();
-    const filtered = assets.filter(a => a.id !== id);
-    await saveData(STORAGE_KEYS.ASSETS, filtered);
+    executeQuery('DELETE FROM assets WHERE id = ?', [id]);
     return { success: true };
   } catch (error) {
     return { success: false, error: 'Error al eliminar activo' };

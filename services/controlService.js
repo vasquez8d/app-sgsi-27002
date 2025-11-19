@@ -1,4 +1,4 @@
-import STORAGE_KEYS, { saveData, getData } from './storage';
+import { executeQuery, getAllRows, getFirstRow } from './database';
 import { ISO_27002_DOMAINS } from '../utils/constants';
 import { generateId } from '../utils/helpers';
 
@@ -82,27 +82,38 @@ const generateISO27002Controls = () => {
   return controls;
 };
 
+// Inicializar controles en la base de datos
+const initializeControls = () => {
+  try {
+    const count = getFirstRow('SELECT COUNT(*) as count FROM controls');
+    
+    if (count && count.count === 0) {
+      const catalog = generateISO27002Controls();
+      
+      catalog.forEach(control => {
+        const id = generateId();
+        executeQuery(
+          `INSERT INTO controls (id, code, name, domain, description, objective, status) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [id, control.code, control.name, control.domain, control.objective || '', 
+           control.objective, 'No implementado']
+        );
+      });
+      
+      console.log('✅ Controles ISO 27002 inicializados');
+    }
+  } catch (error) {
+    console.error('Error inicializando controles:', error);
+  }
+};
+
 export const getControls = async () => {
   try {
-    let controls = await getData(STORAGE_KEYS.CONTROLS);
+    // Inicializar controles si no existen
+    initializeControls();
     
-    // Si no existen controles, inicializar con el catálogo ISO 27002
-    if (!controls || controls.length === 0) {
-      const catalog = generateISO27002Controls();
-      controls = catalog.map(c => ({
-        id: generateId(),
-        ...c,
-        state: 'No implementado',
-        responsible: '',
-        evidence: '',
-        notes: '',
-        implementationDate: null,
-        createdAt: new Date().toISOString(),
-      }));
-      await saveData(STORAGE_KEYS.CONTROLS, controls);
-    }
-    
-    return controls;
+    const controls = getAllRows('SELECT * FROM controls ORDER BY code');
+    return controls || [];
   } catch (error) {
     console.error('Error getting controls:', error);
     return [];
@@ -111,60 +122,95 @@ export const getControls = async () => {
 
 export const updateControl = async (id, updatedData) => {
   try {
-    const controls = await getControls();
-    const index = controls.findIndex(c => c.id === id);
-    if (index !== -1) {
-      controls[index] = { ...controls[index], ...updatedData, updatedAt: new Date().toISOString() };
-      await saveData(STORAGE_KEYS.CONTROLS, controls);
-      return { success: true, control: controls[index] };
+    executeQuery(
+      `UPDATE controls SET 
+       status = COALESCE(?, status),
+       implementation_date = COALESCE(?, implementation_date),
+       responsible = COALESCE(?, responsible),
+       evidence = COALESCE(?, evidence),
+       notes = COALESCE(?, notes),
+       updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [updatedData.status || updatedData.state, updatedData.implementationDate, updatedData.responsible,
+       updatedData.evidence, updatedData.notes, id]
+    );
+    
+    const updatedControl = getFirstRow('SELECT * FROM controls WHERE id = ?', [id]);
+    if (updatedControl) {
+      return { success: true, control: updatedControl };
     }
     return { success: false, error: 'Control no encontrado' };
   } catch (error) {
+    console.error('Error updating control:', error);
     return { success: false, error: 'Error al actualizar control' };
   }
 };
 
 export const getControlsByDomain = async (domain) => {
-  const controls = await getControls();
-  return controls.filter(c => c.domain === domain);
+  try {
+    const controls = getAllRows('SELECT * FROM controls WHERE domain = ? ORDER BY code', [domain]);
+    return controls || [];
+  } catch (error) {
+    console.error('Error getting controls by domain:', error);
+    return [];
+  }
 };
 
 export const getControlsByState = async (state) => {
-  const controls = await getControls();
-  return controls.filter(c => c.state === state);
+  try {
+    const controls = getAllRows('SELECT * FROM controls WHERE status = ? ORDER BY code', [state]);
+    return controls || [];
+  } catch (error) {
+    console.error('Error getting controls by state:', error);
+    return [];
+  }
 };
 
 export const getComplianceStats = async () => {
-  const controls = await getControls();
-  const total = controls.length;
-  const implemented = controls.filter(c => c.state === 'Implementado' || c.state === 'Certificado').length;
-  const inProgress = controls.filter(c => c.state === 'En proceso').length;
-  const notImplemented = controls.filter(c => c.state === 'No implementado').length;
-  
-  return {
-    total,
-    implemented,
-    inProgress,
-    notImplemented,
-    percentage: total > 0 ? Math.round((implemented / total) * 100) : 0,
-  };
+  try {
+    const total = getFirstRow('SELECT COUNT(*) as count FROM controls');
+    const implemented = getFirstRow("SELECT COUNT(*) as count FROM controls WHERE status IN ('Implementado', 'Certificado')");
+    const inProgress = getFirstRow("SELECT COUNT(*) as count FROM controls WHERE status = 'En proceso'");
+    const notImplemented = getFirstRow("SELECT COUNT(*) as count FROM controls WHERE status = 'No implementado'");
+    
+    const totalCount = total?.count || 0;
+    const implementedCount = implemented?.count || 0;
+    
+    return {
+      total: totalCount,
+      implemented: implementedCount,
+      inProgress: inProgress?.count || 0,
+      notImplemented: notImplemented?.count || 0,
+      percentage: totalCount > 0 ? Math.round((implementedCount / totalCount) * 100) : 0,
+    };
+  } catch (error) {
+    console.error('Error getting compliance stats:', error);
+    return { total: 0, implemented: 0, inProgress: 0, notImplemented: 0, percentage: 0 };
+  }
 };
 
 export const getDomainCompliance = async () => {
-  const controls = await getControls();
-  const domainStats = {};
-  
-  ISO_27002_DOMAINS.forEach(domain => {
-    const domainControls = controls.filter(c => c.domain === domain.id);
-    const implemented = domainControls.filter(c => c.state === 'Implementado' || c.state === 'Certificado').length;
+  try {
+    const domainStats = {};
     
-    domainStats[domain.id] = {
-      name: domain.name,
-      total: domainControls.length,
-      implemented,
-      percentage: domainControls.length > 0 ? Math.round((implemented / domainControls.length) * 100) : 0,
-    };
-  });
-  
-  return domainStats;
+    ISO_27002_DOMAINS.forEach(domain => {
+      const total = getFirstRow('SELECT COUNT(*) as count FROM controls WHERE domain = ?', [domain.id]);
+      const implemented = getFirstRow("SELECT COUNT(*) as count FROM controls WHERE domain = ? AND status IN ('Implementado', 'Certificado')", [domain.id]);
+      
+      const totalCount = total?.count || 0;
+      const implementedCount = implemented?.count || 0;
+      
+      domainStats[domain.id] = {
+        name: domain.name,
+        total: totalCount,
+        implemented: implementedCount,
+        percentage: totalCount > 0 ? Math.round((implementedCount / totalCount) * 100) : 0,
+      };
+    });
+    
+    return domainStats;
+  } catch (error) {
+    console.error('Error getting domain compliance:', error);
+    return {};
+  }
 };

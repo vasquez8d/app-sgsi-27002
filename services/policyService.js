@@ -1,9 +1,9 @@
-import STORAGE_KEYS, { saveData, getData } from './storage';
+import { executeQuery, getAllRows, getFirstRow } from './database';
 import { generateId } from '../utils/helpers';
 
 export const getPolicies = async () => {
   try {
-    const policies = await getData(STORAGE_KEYS.POLICIES);
+    const policies = getAllRows('SELECT * FROM policies ORDER BY created_at DESC');
     return policies || [];
   } catch (error) {
     console.error('Error getting policies:', error);
@@ -13,52 +13,68 @@ export const getPolicies = async () => {
 
 export const addPolicy = async (policy) => {
   try {
-    const policies = await getPolicies();
-    const newPolicy = {
-      id: generateId(),
-      ...policy,
-      version: '1.0',
-      createdAt: new Date().toISOString(),
-    };
-    policies.push(newPolicy);
-    await saveData(STORAGE_KEYS.POLICIES, policies);
+    const id = generateId();
+    executeQuery(
+      `INSERT INTO policies (id, code, title, description, content, version, status, responsible, approval_date, review_date) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, policy.code, policy.title, policy.description || '', policy.content || '', 
+       '1.0', policy.status || 'Borrador', policy.responsible || '', 
+       policy.approvalDate || null, policy.reviewDate || null]
+    );
+    
+    const newPolicy = getFirstRow('SELECT * FROM policies WHERE id = ?', [id]);
     return { success: true, policy: newPolicy };
   } catch (error) {
+    console.error('Error adding policy:', error);
+    if (error.message.includes('UNIQUE constraint failed')) {
+      return { success: false, error: 'El código de política ya existe' };
+    }
     return { success: false, error: 'Error al agregar política' };
   }
 };
 
 export const updatePolicy = async (id, updatedData) => {
   try {
-    const policies = await getPolicies();
-    const index = policies.findIndex(p => p.id === id);
-    if (index !== -1) {
-      // Incrementar versión si cambió el contenido
-      const currentVersion = parseFloat(policies[index].version);
-      const newVersion = (currentVersion + 0.1).toFixed(1);
-      
-      policies[index] = { 
-        ...policies[index], 
-        ...updatedData, 
-        version: newVersion,
-        updatedAt: new Date().toISOString() 
-      };
-      await saveData(STORAGE_KEYS.POLICIES, policies);
-      return { success: true, policy: policies[index] };
+    // Obtener versión actual e incrementarla
+    const current = getFirstRow('SELECT version FROM policies WHERE id = ?', [id]);
+    const currentVersion = current ? parseFloat(current.version) : 1.0;
+    const newVersion = (currentVersion + 0.1).toFixed(1);
+    
+    executeQuery(
+      `UPDATE policies SET 
+       code = COALESCE(?, code),
+       title = COALESCE(?, title),
+       description = COALESCE(?, description),
+       content = COALESCE(?, content),
+       version = ?,
+       status = COALESCE(?, status),
+       responsible = COALESCE(?, responsible),
+       approval_date = COALESCE(?, approval_date),
+       review_date = COALESCE(?, review_date),
+       updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [updatedData.code, updatedData.title, updatedData.description, updatedData.content,
+       newVersion, updatedData.status, updatedData.responsible, 
+       updatedData.approvalDate, updatedData.reviewDate, id]
+    );
+    
+    const updatedPolicy = getFirstRow('SELECT * FROM policies WHERE id = ?', [id]);
+    if (updatedPolicy) {
+      return { success: true, policy: updatedPolicy };
     }
     return { success: false, error: 'Política no encontrada' };
   } catch (error) {
+    console.error('Error updating policy:', error);
     return { success: false, error: 'Error al actualizar política' };
   }
 };
 
 export const deletePolicy = async (id) => {
   try {
-    const policies = await getPolicies();
-    const filtered = policies.filter(p => p.id !== id);
-    await saveData(STORAGE_KEYS.POLICIES, filtered);
+    executeQuery('DELETE FROM policies WHERE id = ?', [id]);
     return { success: true };
   } catch (error) {
+    console.error('Error deleting policy:', error);
     return { success: false, error: 'Error al eliminar política' };
   }
 };
