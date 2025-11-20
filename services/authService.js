@@ -1,10 +1,14 @@
 import { getFirstRow } from './database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from '../utils/logger';
 
 const CURRENT_USER_KEY = '@sgsi_current_user';
 
 export const login = async (username, password) => {
   try {
+    logger.performanceStart('login');
+    logger.info('AuthService', `🔑 Intento de login para usuario: ${username}`);
+    
     // Buscar usuario en la base de datos
     const user = getFirstRow(
       'SELECT id, username, name, email, role FROM users WHERE username = ? AND password = ?',
@@ -19,22 +23,29 @@ export const login = async (username, password) => {
       
       // Guardar sesión actual en AsyncStorage
       await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userSession));
+      logger.performanceEnd('login');
+      logger.auth('AuthService', 'LOGIN', username, true);
       return { success: true, user: userSession };
     }
     
+    logger.performanceEnd('login');
+    logger.auth('AuthService', 'LOGIN', username, false);
+    logger.warn('AuthService', `❌ Credenciales incorrectas para usuario: ${username}`);
     return { success: false, error: 'Credenciales incorrectas' };
   } catch (error) {
-    console.error('Error en login:', error);
+    logger.error('AuthService', 'Error en login', error);
     return { success: false, error: 'Error en el login' };
   }
 };
 
 export const logout = async () => {
   try {
+    const currentUser = await getCurrentUser();
     await AsyncStorage.removeItem(CURRENT_USER_KEY);
+    logger.auth('AuthService', 'LOGOUT', currentUser?.username || 'Unknown', true);
     return { success: true };
   } catch (error) {
-    console.error('Error en logout:', error);
+    logger.error('AuthService', 'Error en logout', error);
     return { success: false, error: 'Error en el logout' };
   }
 };
@@ -42,9 +53,13 @@ export const logout = async () => {
 export const getCurrentUser = async () => {
   try {
     const userData = await AsyncStorage.getItem(CURRENT_USER_KEY);
-    return userData ? JSON.parse(userData) : null;
+    const user = userData ? JSON.parse(userData) : null;
+    if (user) {
+      logger.debug('AuthService', `👤 Usuario actual recuperado: ${user.username}`);
+    }
+    return user;
   } catch (error) {
-    console.error('Error obteniendo usuario actual:', error);
+    logger.error('AuthService', 'Error obteniendo usuario actual', error);
     return null;
   }
 };

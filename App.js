@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import AppNavigator from './navigation/AppNavigator';
 import { initDatabase } from './services/database';
+import logger from './utils/logger';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -12,14 +13,25 @@ export default function App() {
   useEffect(() => {
     const prepareApp = async () => {
       try {
+        logger.appStart();
+        logger.performanceStart('appInitialization');
+        
         // Inicializar la base de datos
+        logger.info('App', '🛠️ Inicializando base de datos...');
         const result = initDatabase();
+        
         if (!result.success) {
+          logger.error('App', 'Error al inicializar la base de datos', new Error(result.error));
           setError('Error al inicializar la base de datos');
+        } else {
+          logger.info('App', '✅ Base de datos inicializada correctamente');
         }
+        
+        logger.performanceEnd('appInitialization');
         setIsReady(true);
+        logger.info('App', '🚀 Aplicación lista para usar');
       } catch (err) {
-        console.error('Error preparando la aplicación:', err);
+        logger.appError('App', 'Error preparando la aplicación', err);
         setError('Error al iniciar la aplicación');
         setIsReady(true); // Continuar de todas formas
       }

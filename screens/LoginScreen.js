@@ -99,7 +99,7 @@ const LoginScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Versión 2.0.0</Text>
+          <Text style={styles.footerText}>Versión 2.1.2</Text>
           <Text style={styles.footerText}>© 2025 SGSI Management System</Text>
         </View>
       </ScrollView>

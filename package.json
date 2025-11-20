@@ -1,6 +1,6 @@
 {
   "name": "sgsi-iso27002-app",
-  "version": "2.0.0",
+  "version": "2.1.2",
   "description": "Sistema de Gestión de Seguridad de la Información basado en ISO 27002:2013",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {

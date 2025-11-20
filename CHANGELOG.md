@@ -2,6 +2,75 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.2] - 2025-11-19
+
+### Added
+- Sistema de logging detallado y centralizado (`utils/logger.js`)
+- Logging con 5 niveles: DEBUG, INFO, WARN, ERROR, FATAL
+- Timestamps automáticos en todos los logs
+- Colores y emojis semánticos en consola para mejor legibilidad
+- Logging especializado: database, network, auth, security, performance
+- Métricas de rendimiento con `performanceStart/End/Measure`
+- Logging de operaciones CRUD con contexto
+- Historial de logs en memoria (últimos 100)
+- Stack traces completos para errores
+- Tracking del ciclo de vida de componentes React
+- Banner de inicio con información de versión
+
+### Changed
+- Integrado logger en `alcanceService.js` (reemplaza console.log/error)
+- Integrado logger en `alcanceCRUD.js` para todas las operaciones
+- Integrado logger en `authService.js` con tracking de login/logout
+- Integrado logger en `App.js` para ciclo de vida de la aplicación
+- Integrado logger en `ProcesosScreen.js` con mount/unmount tracking
+- Mejorada trazabilidad de errores con contexto completo
+
+### Improved
+- Mejor debugging con logs estructurados y coloreados
+- Rastreo de rendimiento automático en operaciones críticas
+- Auditoría de autenticación con logs de login/logout
+- Visibilidad completa del flujo de datos en la aplicación
+
+## [2.1.1] - 2025-11-19
+
+### Fixed
+- Corrección crítica de error al crear procesos en módulo de Alcance
+- Fix en inicialización de tablas SQLite usando `database.execSync()` para sentencias DDL
+- Corrección de uso incorrecto de `executeQuery()` (que usa `runSync()`) para CREATE TABLE
+- Agregado llamado a `initAlcanceTables()` en componentes AlcanceDashboard y ProcesosScreen
+- Mejora en manejo de errores con try-catch en carga de procesos
+
+### Technical Details
+- Cambio de 7 sentencias CREATE TABLE de `executeQuery()` a `database.execSync()`
+- Cambio de verificación de metadata de `getFirstRow()` a `database.getFirstSync()`
+- Cambio de INSERT inicial de `executeQuery()` a `database.runSync()`
+- SQLite requiere `execSync()` para DDL (CREATE/DROP/ALTER) y `runSync()` para DML (INSERT/UPDATE/DELETE)
+
+## [2.1.0] - 2025-11-19
+
+### Added
+- Módulo completo de Gestión del Alcance SGSI según ISO 27001 punto 4.3
+- Dashboard de Alcance con 6 secciones y sistema de métricas
+- Gestión de Procesos con macroprocesos, criticidad y estados
+- Gestión de Unidades Organizacionales con niveles jerárquicos (1-5) y roles SGSI
+- Gestión de Ubicaciones con coordenadas GPS (-90/90 lat, -180/180 lng)
+- Gestión de Infraestructura TI con 9 tipos de activos y criticidad
+- Gestión de Exclusiones con justificación mínima de 50 caracteres (ISO 27001)
+- Sistema de cálculo automático de completitud (0-100%)
+- 7 nuevas tablas SQLite para módulo de Alcance
+- Validaciones en tiempo real para todos los formularios
+- Componente reutilizable AlcanceCard para dashboard
+- Búsqueda y filtros avanzados en todas las pantallas
+- Pull-to-refresh en todas las listas
+- Sistema de badges de estado con colores semánticos
+
+### Technical Details
+- 17 archivos nuevos: 2 servicios, 2 utilidades, 1 componente, 6 pantallas, 5 formularios
+- Servicios: alcanceService.js (gestión de tablas), alcanceCRUD.js (operaciones CRUD)
+- Validaciones: alcanceValidation.js con reglas ISO 27001
+- Constantes: alcanceConstants.js con tema y enumeraciones
+- Algoritmo de completitud basado en peso ponderado de entidades
+
 ## [2.0.0] - 2025-11-19
 
 ### 🔄 Changed - BREAKING CHANGES
