@@ -66,7 +66,7 @@ const DashboardScreen = ({ navigation }) => {
       title: 'Alcance del SGSI',
       icon: 'document-text',
       color: COLORS.info,
-      screen: 'Scope',
+      screen: 'Alcance',
       description: 'Definición y límites',
     },
     {
@@ -80,21 +80,21 @@ const DashboardScreen = ({ navigation }) => {
       title: 'Políticas',
       icon: 'book',
       color: COLORS.secondary,
-      screen: 'Policies',
+      screen: 'Políticas',
       description: 'Repositorio de políticas',
     },
     {
       title: 'Riesgos',
       icon: 'warning',
       color: COLORS.danger,
-      screen: 'Risks',
+      screen: 'Riesgos',
       description: 'Gestión de riesgos',
     },
     {
       title: 'Controles ISO 27002:2013',
       icon: 'shield-checkmark',
       color: '#8B5CF6',
-      screen: 'Controls',
+      screen: 'Controles',
       description: '114 controles de seguridad',
     },
   ];
@@ -173,7 +173,11 @@ const DashboardScreen = ({ navigation }) => {
             <TouchableOpacity
               key={index}
               style={styles.moduleCard}
-              onPress={() => navigation.navigate(module.screen)}
+              onPress={() => {
+                // Para tabs del bottom navigator, usar navigate directo
+                // Para screens del stack, también funciona navigate
+                navigation.navigate(module.screen);
+              }}
               activeOpacity={0.7}
             >
               <View style={[styles.moduleIcon, { backgroundColor: module.color }]}>

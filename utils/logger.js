@@ -401,7 +401,7 @@ export const validationError = (module, entity, errors) => {
 export const appStart = () => {
   const banner = `
 ╔════════════════════════════════════════════════════════════╗
-║           SGSI ISO/IEC 27002:2013 - v2.1.1                ║
+║           SGSI ISO/IEC 27002:2013 - v2.4.0                ║
 ║     Sistema de Gestión de Seguridad de la Información     ║
 ╚════════════════════════════════════════════════════════════╝
   `;

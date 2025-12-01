@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ALCANCE_THEME } from '../../utils/alcanceConstants';
+import { ALCANCE_THEME } from '../utils/alcanceConstants';
 
 const AlcanceCard = ({ icon, title, metrics, status, lastUpdate, onPress, badge }) => {
   return (

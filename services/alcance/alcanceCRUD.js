@@ -80,7 +80,7 @@ export const getProcesos = () => {
   try {
     logger.performanceStart('getProcesos');
     const procesos = getAllRows('SELECT * FROM alcance_procesos ORDER BY created_at DESC');
-    return rows.map(p => ({
+    return (procesos || []).map(p => ({
       id: p.id,
       macroproceso: p.macroproceso,
       nombreProceso: p.nombre_proceso,
@@ -91,8 +91,10 @@ export const getProcesos = () => {
       fechaInclusion: p.fecha_inclusion,
       procesosRelacionados: p.procesos_relacionados ? JSON.parse(p.procesos_relacionados) : [],
     }));
+    logger.performanceEnd('getProcesos');
+    logger.crudList('AlcanceCRUD', 'Procesos', procesos?.length || 0);
   } catch (error) {
-    console.error('Error obteniendo procesos:', error);
+    logger.error('AlcanceCRUD', 'Error obteniendo procesos', error);
     return [];
   }
 };
