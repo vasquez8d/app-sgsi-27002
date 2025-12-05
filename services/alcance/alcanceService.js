@@ -330,6 +330,7 @@ export const getAlcanceData = async () => {
         criticidad: p.criticidad,
         fechaInclusion: p.fecha_inclusion,
         procesosRelacionados: p.procesos_relacionados ? JSON.parse(p.procesos_relacionados) : [],
+        justificacion: p.justificacion,
       })),
       unidades: unidades.map(u => ({
         id: u.id,
@@ -352,6 +353,7 @@ export const getAlcanceData = async () => {
         incluido: Boolean(ub.incluido),
         coordenadas: ub.latitud && ub.longitud ? { lat: ub.latitud, lng: ub.longitud } : null,
         observaciones: ub.observaciones,
+        justificacion: ub.justificacion,
       })),
       infraestructura: infraestructura.map(i => ({
         id: i.id,
@@ -364,6 +366,7 @@ export const getAlcanceData = async () => {
         criticidad: i.criticidad,
         estadoActivo: i.estado_activo,
         incluido: Boolean(i.incluido),
+        justificacion: i.justificacion,
       })),
       exclusiones: exclusiones.map(e => ({
         id: e.id,

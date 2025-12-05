@@ -33,6 +33,7 @@ const InfraestructuraScreen = ({ navigation }) => {
   const [selectedTipoActivo, setSelectedTipoActivo] = useState('Todos');
   const [selectedCriticidad, setSelectedCriticidad] = useState('Todas');
   const [selectedEstado, setSelectedEstado] = useState('Todos');
+  const [selectedIncluido, setSelectedIncluido] = useState('Todos');
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingInfra, setEditingInfra] = useState(null);
@@ -43,7 +44,7 @@ const InfraestructuraScreen = ({ navigation }) => {
 
   useEffect(() => {
     applyFilters();
-  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado, infraestructura]);
+  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado, selectedIncluido, infraestructura]);
 
   const loadInfraestructura = useCallback(() => {
     const data = getInfraestructura();
@@ -83,8 +84,14 @@ const InfraestructuraScreen = ({ navigation }) => {
       filtered = filtered.filter((i) => i.estadoActivo === selectedEstado);
     }
 
+    if (selectedIncluido !== 'Todos') {
+      filtered = filtered.filter((i) => 
+        selectedIncluido === 'Incluido' ? i.incluido : !i.incluido
+      );
+    }
+
     setFilteredInfra(filtered);
-  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado, infraestructura]);
+  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado, selectedIncluido, infraestructura]);
 
   const handleAddInfra = () => {
     setEditingInfra(null);
@@ -191,6 +198,7 @@ const InfraestructuraScreen = ({ navigation }) => {
     setSelectedTipoActivo('Todos');
     setSelectedCriticidad('Todas');
     setSelectedEstado('Todos');
+    setSelectedIncluido('Todos');
   };
 
   const hasActiveFilters = useMemo(() => {
@@ -198,9 +206,10 @@ const InfraestructuraScreen = ({ navigation }) => {
       searchQuery.trim() !== '' ||
       selectedTipoActivo !== 'Todos' ||
       selectedCriticidad !== 'Todas' ||
-      selectedEstado !== 'Todos'
+      selectedEstado !== 'Todos' ||
+      selectedIncluido !== 'Todos'
     );
-  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado]);
+  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado, selectedIncluido]);
 
   const getTipoActivoIcon = useCallback((tipo) => {
     switch (tipo) {
@@ -243,6 +252,7 @@ const InfraestructuraScreen = ({ navigation }) => {
   const metrics = useMemo(() => {
     const total = infraestructura.length;
     const incluidos = infraestructura.filter((i) => i.incluido).length;
+    const excluidos = infraestructura.filter((i) => !i.incluido).length;
     const criticidadAlta = infraestructura.filter((i) => i.criticidad === 'Alta').length;
     const activos = infraestructura.filter((i) => i.estadoActivo === 'Activo').length;
     
@@ -251,10 +261,10 @@ const InfraestructuraScreen = ({ navigation }) => {
       porTipo[tipo] = infraestructura.filter((i) => i.tipoActivo === tipo).length;
     });
 
-    return { total, incluidos, criticidadAlta, activos, porTipo };
+    return { total, incluidos, excluidos, criticidadAlta, activos, porTipo };
   }, [infraestructura]);
 
-  const totalMetrics = 1 + Object.values(metrics.porTipo).filter(count => count > 0).length;
+  const totalMetrics = 3 + Object.values(metrics.porTipo).filter(count => count > 0).length;
   const cardWidth = useMemo(() => calculateMetricCardWidth(totalMetrics, 62, 6), [totalMetrics]);
 
   return (
@@ -276,6 +286,28 @@ const InfraestructuraScreen = ({ navigation }) => {
             borderColor={`${ALCANCE_THEME.colors.primary}30`}
             testID="metric-total"
             accessibilityLabel={`Total de activos: ${metrics.total}`}
+            width={cardWidth}
+          />
+          <MetricCard
+            icon="checkmark-circle-outline"
+            iconColor={ALCANCE_THEME.colors.success}
+            value={metrics.incluidos}
+            label="Incluidos"
+            backgroundColor={`${ALCANCE_THEME.colors.success}08`}
+            borderColor={`${ALCANCE_THEME.colors.success}30`}
+            testID="metric-incluidos"
+            accessibilityLabel={`Activos incluidos: ${metrics.incluidos}`}
+            width={cardWidth}
+          />
+          <MetricCard
+            icon="close-circle-outline"
+            iconColor={ALCANCE_THEME.colors.danger}
+            value={metrics.excluidos}
+            label="Excluidos"
+            backgroundColor={`${ALCANCE_THEME.colors.danger}08`}
+            borderColor={`${ALCANCE_THEME.colors.danger}30`}
+            testID="metric-excluidos"
+            accessibilityLabel={`Activos excluidos: ${metrics.excluidos}`}
             width={cardWidth}
           />
           {Object.keys(metrics.porTipo).map((tipo) => {
@@ -334,6 +366,7 @@ const InfraestructuraScreen = ({ navigation }) => {
         estadosActivo={ESTADO_ACTIVO}
         selectedValue={selectedEstado}
         onValueChange={setSelectedEstado}
+        label="Estado de Activo"
       />
 
       {/* Filtro de Criticidad con Picker */}
@@ -342,6 +375,35 @@ const InfraestructuraScreen = ({ navigation }) => {
         selectedValue={selectedCriticidad}
         onValueChange={setSelectedCriticidad}
       />
+
+      {/* Filtro de Estado (Incluido/Excluido) con chips */}
+      <View style={styles.filtersContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersContent}
+        >
+          <Text style={styles.filterLabel}>Estado:</Text>
+          <FilterChip
+            label="Todos"
+            isSelected={selectedIncluido === 'Todos'}
+            onPress={() => setSelectedIncluido('Todos')}
+            icon="apps-outline"
+          />
+          <FilterChip
+            label="Incluido"
+            isSelected={selectedIncluido === 'Incluido'}
+            onPress={() => setSelectedIncluido('Incluido')}
+            icon="checkmark-circle-outline"
+          />
+          <FilterChip
+            label="Excluido"
+            isSelected={selectedIncluido === 'Excluido'}
+            onPress={() => setSelectedIncluido('Excluido')}
+            icon="close-circle-outline"
+          />
+        </ScrollView>
+      </View>
 
       {/* Botón limpiar filtros */}
       {hasActiveFilters && (
@@ -451,6 +513,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: ALCANCE_THEME.colors.text,
     marginRight: ALCANCE_THEME.spacing.xs,
+  },
+  pickerWrapper: {
+    marginHorizontal: ALCANCE_THEME.spacing.md,
+    marginBottom: ALCANCE_THEME.spacing.sm,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: ALCANCE_THEME.colors.textSecondary,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   clearFiltersContainer: {
     backgroundColor: '#FFFFFF',

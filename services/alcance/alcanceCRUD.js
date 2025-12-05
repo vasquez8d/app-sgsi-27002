@@ -92,6 +92,7 @@ export const getProcesos = () => {
       criticidad: p.criticidad,
       fechaInclusion: p.fecha_inclusion,
       procesosRelacionados: p.procesos_relacionados ? JSON.parse(p.procesos_relacionados) : [],
+      justificacion: p.justificacion,
     }));
     logger.performanceEnd('getProcesos');
     logger.crudList('AlcanceCRUD', 'Procesos', procesos?.length || 0);
@@ -288,6 +289,7 @@ export const getUbicaciones = () => {
       incluido: Boolean(ub.incluido),
       coordenadas: ub.latitud && ub.longitud ? { lat: ub.latitud, lng: ub.longitud } : null,
       observaciones: ub.observaciones,
+      justificacion: ub.justificacion,
     }));
   } catch (error) {
     console.error('Error obteniendo ubicaciones:', error);
@@ -352,6 +354,7 @@ export const updateInfraestructura = (id, infra) => {
         infra.estadoActivo,
         infra.incluido ? 1 : 0,
         infra.observaciones || '',
+        infra.justificacion || '',
         id,
       ]
     );
@@ -389,6 +392,7 @@ export const getInfraestructura = () => {
       estadoActivo: i.estado_activo,
       incluido: Boolean(i.incluido),
       observaciones: i.observaciones,
+      justificacion: i.justificacion,
     }));
   } catch (error) {
     console.error('Error obteniendo infraestructura:', error);

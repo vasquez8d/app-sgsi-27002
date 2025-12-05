@@ -6,7 +6,7 @@ import { ALCANCE_THEME } from '../utils/alcanceConstants';
 /**
  * Componente de filtro picker para seleccionar estado de activo
  */
-const EstadoActivoPickerFilter = ({ estadosActivo, selectedValue, onValueChange }) => {
+const EstadoActivoPickerFilter = ({ estadosActivo, selectedValue, onValueChange, label = 'Estado' }) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const handleSelect = (value) => {
@@ -60,7 +60,7 @@ const EstadoActivoPickerFilter = ({ estadosActivo, selectedValue, onValueChange 
       >
         <View style={styles.pickerContent}>
           <Ionicons name="toggle-outline" size={20} color={ALCANCE_THEME.colors.primary} />
-          <Text style={styles.pickerLabel}>Estado:</Text>
+          <Text style={styles.pickerLabel}>{label}:</Text>
           <Text style={styles.pickerValue}>{getDisplayText()}</Text>
         </View>
         <Ionicons name="chevron-down" size={20} color={ALCANCE_THEME.colors.textSecondary} />
