@@ -26,11 +26,13 @@ const ProcesoForm = ({ proceso, onSave, onCancel }) => {
     criticidad: proceso?.criticidad || 'Media',
     fechaInclusion: proceso?.fechaInclusion || new Date().toISOString(),
     procesosRelacionados: proceso?.procesosRelacionados || [],
+    justificacion: proceso?.justificacion || '',
   });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [descripcionLength, setDescripcionLength] = useState(proceso?.descripcion?.length || 0);
+  const [justificacionLength, setJustificacionLength] = useState(proceso?.justificacion?.length || 0);
 
   const scrollViewRef = useRef(null);
   const nombreRef = useRef(null);
@@ -43,6 +45,10 @@ const ProcesoForm = ({ proceso, onSave, onCancel }) => {
 
     if (field === 'descripcion') {
       setDescripcionLength(value.length);
+    }
+    
+    if (field === 'justificacion') {
+      setJustificacionLength(value.length);
     }
 
     // Validación en tiempo real
@@ -272,6 +278,55 @@ const ProcesoForm = ({ proceso, onSave, onCancel }) => {
         )}
       </View>
 
+      {/* Justificación de Exclusión - Solo si estado es Excluido */}
+      {formData.estado === 'Excluido' && (
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>
+            Justificación de Exclusión <Text style={styles.required}>*</Text>
+          </Text>
+          <Text style={styles.helpText}>
+            Según ISO 27001:2013 (Cláusula 4.3), debe documentar y justificar cualquier exclusión del alcance del SGSI.
+          </Text>
+          <TextInput
+            ref={descripcionRef}
+            style={[
+              styles.textArea,
+              showError('justificacion') && styles.inputError,
+            ]}
+            value={formData.justificacion}
+            onChangeText={(value) => handleChange('justificacion', value)}
+            onBlur={() => handleBlur('justificacion')}
+            placeholder="Ej: Proceso tercerizado bajo responsabilidad del proveedor según contrato vigente..."
+            placeholderTextColor={ALCANCE_THEME.colors.textSecondary}
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+          />
+          <View style={styles.charCountContainer}>
+            <Text style={[
+              styles.charCount,
+              justificacionLength < 30 && styles.charCountWarning
+            ]}>
+              {justificacionLength}/500 caracteres {justificacionLength < 30 && '(mínimo 30)'}
+            </Text>
+          </View>
+          {showError('justificacion') && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.error} />
+              <Text style={styles.errorText}>{errors.justificacion}</Text>
+            </View>
+          )}
+          {justificacionLength < 30 && touched.justificacion && (
+            <View style={styles.warningContainer}>
+              <Ionicons name="warning" size={16} color={ALCANCE_THEME.colors.warning} />
+              <Text style={styles.warningText}>
+                Se requiere una justificación de al menos 30 caracteres para cumplir con ISO 27001
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Incluir en Alcance Toggle */}
       <View style={styles.fieldContainer}>
         <View style={styles.toggleContainer}>
@@ -382,10 +437,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: ALCANCE_THEME.colors.error,
   },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: ALCANCE_THEME.spacing.xs,
+    padding: ALCANCE_THEME.spacing.sm,
+    backgroundColor: ALCANCE_THEME.colors.warning + '15',
+    borderRadius: ALCANCE_THEME.borderRadius.sm,
+    gap: 6,
+  },
+  warningText: {
+    fontSize: 12,
+    color: ALCANCE_THEME.colors.warning,
+    flex: 1,
+    lineHeight: 16,
+  },
   helpText: {
     fontSize: 12,
     color: ALCANCE_THEME.colors.textSecondary,
     marginTop: ALCANCE_THEME.spacing.xs,
+    marginBottom: ALCANCE_THEME.spacing.xs,
+    lineHeight: 16,
   },
   charCountContainer: {
     alignItems: 'flex-end',

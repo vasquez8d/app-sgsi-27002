@@ -33,9 +33,33 @@ export const initAlcanceTables = () => {
         responsable_nombre TEXT,
         completitud INTEGER DEFAULT 0,
         fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-        fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
+        fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        fecha_aprobacion DATETIME
       )
     `);
+
+    // Migraciones: Agregar columnas nuevas si no existen
+    try {
+      const columns = database.getAllSync("PRAGMA table_info(alcance_metadata)");
+      const columnNames = columns.map(col => col.name);
+      
+      if (!columnNames.includes('fecha_aprobacion')) {
+        logger.info('[AlcanceService] Agregando columna fecha_aprobacion...');
+        database.execSync('ALTER TABLE alcance_metadata ADD COLUMN fecha_aprobacion DATETIME');
+      }
+      
+      if (!columnNames.includes('responsable_cargo')) {
+        logger.info('[AlcanceService] Agregando columna responsable_cargo...');
+        database.execSync('ALTER TABLE alcance_metadata ADD COLUMN responsable_cargo TEXT');
+      }
+      
+      if (!columnNames.includes('responsable_email')) {
+        logger.info('[AlcanceService] Agregando columna responsable_email...');
+        database.execSync('ALTER TABLE alcance_metadata ADD COLUMN responsable_email TEXT');
+      }
+    } catch (migrationError) {
+      logger.warn('[AlcanceService] Error en migraciones de metadata (puede ser normal si ya existen)', migrationError);
+    }
 
     // Tabla de procesos
     database.execSync(`
@@ -49,10 +73,24 @@ export const initAlcanceTables = () => {
         criticidad TEXT DEFAULT 'Media',
         fecha_inclusion DATETIME,
         procesos_relacionados TEXT,
+        justificacion TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Migración: Agregar columna justificacion a procesos si no existe
+    try {
+      const procesosColumns = database.getAllSync("PRAGMA table_info(alcance_procesos)");
+      const procesosColumnNames = procesosColumns.map(col => col.name);
+      
+      if (!procesosColumnNames.includes('justificacion')) {
+        logger.info('[AlcanceService] Agregando columna justificacion a alcance_procesos...');
+        database.execSync('ALTER TABLE alcance_procesos ADD COLUMN justificacion TEXT');
+      }
+    } catch (migrationError) {
+      logger.warn('[AlcanceService] Error en migración de justificacion en procesos', migrationError);
+    }
 
     // Tabla de unidades organizativas
     database.execSync(`
@@ -78,35 +116,112 @@ export const initAlcanceTables = () => {
         nombre_sitio TEXT NOT NULL,
         direccion TEXT,
         tipo TEXT NOT NULL,
+        tipos_activo TEXT,
         activos_presentes TEXT,
         responsable_sitio TEXT,
         incluido INTEGER DEFAULT 1,
         latitud REAL,
         longitud REAL,
         observaciones TEXT,
+        justificacion TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
+    // Migración: Actualizar columna tipo_activo a tipos_activo si existe la tabla
+    try {
+      const columns = database.getAllSync("PRAGMA table_info(alcance_ubicaciones)");
+      const hasTipoActivo = columns.some(col => col.name === 'tipo_activo');
+      const hasTiposActivo = columns.some(col => col.name === 'tipos_activo');
+      
+      if (hasTipoActivo && !hasTiposActivo) {
+        logger.info('[AlcanceService] Migrando columna tipo_activo a tipos_activo...');
+        // Crear nueva tabla con estructura correcta
+        database.execSync(`
+          CREATE TABLE alcance_ubicaciones_new (
+            id TEXT PRIMARY KEY,
+            nombre_sitio TEXT NOT NULL,
+            direccion TEXT,
+            tipo TEXT NOT NULL,
+            tipos_activo TEXT,
+            activos_presentes TEXT,
+            responsable_sitio TEXT,
+            incluido INTEGER DEFAULT 1,
+            latitud REAL,
+            longitud REAL,
+            observaciones TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        
+        // Copiar datos convirtiendo tipo_activo string a array JSON
+        database.execSync(`
+          INSERT INTO alcance_ubicaciones_new 
+          SELECT 
+            id, nombre_sitio, direccion, tipo,
+            CASE 
+              WHEN tipo_activo IS NOT NULL AND tipo_activo != '' 
+              THEN '["' || tipo_activo || '"]'
+              ELSE '[]'
+            END as tipos_activo,
+            activos_presentes, responsable_sitio, incluido, 
+            latitud, longitud, observaciones, created_at, updated_at
+          FROM alcance_ubicaciones
+        `);
+        
+        // Eliminar tabla antigua y renombrar nueva
+        database.execSync('DROP TABLE alcance_ubicaciones');
+        database.execSync('ALTER TABLE alcance_ubicaciones_new RENAME TO alcance_ubicaciones');
+        logger.info('[AlcanceService] Migración completada exitosamente');
+      }
+    } catch (migrationError) {
+      logger.warn('[AlcanceService] Error en migración (puede ser ignorado si es nueva instalación):', migrationError.message);
+    }
+
     // Tabla de infraestructura TI
     database.execSync(`
       CREATE TABLE IF NOT EXISTS alcance_infraestructura (
         id TEXT PRIMARY KEY,
-        tipo_activo TEXT NOT NULL,
         identificador TEXT NOT NULL,
-        ubicacion_id TEXT,
-        propietario_area TEXT,
+        tipo_activo TEXT NOT NULL,
+        sitio TEXT,
+        unidad_negocio TEXT,
+        ubicacion_fisica TEXT,
+        propietario TEXT,
         sistema_operativo TEXT,
         funcion TEXT,
         criticidad TEXT DEFAULT 'Media',
         estado_activo TEXT DEFAULT 'Activo',
-        incluido_alcance INTEGER DEFAULT 1,
+        incluido INTEGER DEFAULT 1,
+        observaciones TEXT,
+        justificacion TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (ubicacion_id) REFERENCES alcance_ubicaciones(id)
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Migraciones: Agregar columna justificacion a ubicaciones e infraestructura
+    try {
+      const ubicacionesColumns = database.getAllSync("PRAGMA table_info(alcance_ubicaciones)");
+      const ubicacionesColumnNames = ubicacionesColumns.map(col => col.name);
+      
+      if (!ubicacionesColumnNames.includes('justificacion')) {
+        logger.info('[AlcanceService] Agregando columna justificacion a alcance_ubicaciones...');
+        database.execSync('ALTER TABLE alcance_ubicaciones ADD COLUMN justificacion TEXT');
+      }
+
+      const infraColumns = database.getAllSync("PRAGMA table_info(alcance_infraestructura)");
+      const infraColumnNames = infraColumns.map(col => col.name);
+      
+      if (!infraColumnNames.includes('justificacion')) {
+        logger.info('[AlcanceService] Agregando columna justificacion a alcance_infraestructura...');
+        database.execSync('ALTER TABLE alcance_infraestructura ADD COLUMN justificacion TEXT');
+      }
+    } catch (migrationError) {
+      logger.warn('[AlcanceService] Error en migración de justificacion', migrationError);
+    }
 
     // Tabla de exclusiones
     database.execSync(`
@@ -197,9 +312,12 @@ export const getAlcanceData = async () => {
         estado: metadata.estado,
         completitud: metadata.completitud || 0,
         fechaCreacion: metadata.fecha_creacion,
+        fechaAprobacion: metadata.fecha_aprobacion,
         responsable: {
           id: metadata.responsable_id || '',
           nombre: metadata.responsable_nombre || '',
+          cargo: metadata.responsable_cargo || '',
+          email: metadata.responsable_email || '',
         },
       },
       procesos: procesos.map(p => ({
@@ -245,7 +363,7 @@ export const getAlcanceData = async () => {
         funcion: i.funcion,
         criticidad: i.criticidad,
         estadoActivo: i.estado_activo,
-        incluidoAlcance: Boolean(i.incluido_alcance),
+        incluido: Boolean(i.incluido),
       })),
       exclusiones: exclusiones.map(e => ({
         id: e.id,
@@ -324,18 +442,28 @@ export const calculateCompletitud = (data) => {
     if (data.infraestructura.length >= 3) score += 10;
     else if (data.infraestructura.length >= 1) score += 5;
     
-    const infraIncluida = data.infraestructura.filter(i => i.incluidoAlcance).length;
+    const infraIncluida = data.infraestructura.filter(i => i.incluido).length;
     if (infraIncluida >= 1) score += 5;
 
-    // Exclusiones (10 puntos)
-    if (data.exclusiones.length >= 1) {
-      const conJustificacion = data.exclusiones.filter(e => e.justificacion && e.justificacion.length >= 50).length;
-      if (conJustificacion === data.exclusiones.length) score += 10;
-      else score += 5;
-    }
+    // Exclusiones justificadas (10 puntos)
+    const procesosExcluidos = data.procesos.filter(p => p.estado !== 'Incluido' && p.justificacion && p.justificacion.length >= 30);
+    const unidadesExcluidas = data.unidades.filter(u => !u.incluida && u.justificacion && u.justificacion.length >= 30);
+    const ubicacionesExcluidas = data.ubicaciones.filter(u => !u.incluido && u.justificacion && u.justificacion.length >= 30);
+    const infraExcluida = data.infraestructura.filter(i => !i.incluido && i.justificacion && i.justificacion.length >= 30);
+    
+    const totalExclusiones = (data.procesos.filter(p => p.estado !== 'Incluido').length +
+                             data.unidades.filter(u => !u.incluida).length +
+                             data.ubicaciones.filter(u => !u.incluido).length +
+                             data.infraestructura.filter(i => !i.incluido).length);
+    
+    const exclusionesJustificadas = procesosExcluidos.length + unidadesExcluidas.length + 
+                                   ubicacionesExcluidas.length + infraExcluida.length;
+    
+    if (totalExclusiones === 0 || exclusionesJustificadas === totalExclusiones) score += 10;
+    else if (exclusionesJustificadas > 0) score += 5;
 
-    // Validación (5 puntos)
-    if (data.validacion.propietarioDoc) score += 5;
+    // Aprobación del documento (5 puntos)
+    if (data.metadata.estado === 'Aprobado') score += 5;
 
     return Math.min(Math.round(score), maxScore);
   } catch (error) {
@@ -379,14 +507,20 @@ export const saveMetadata = async (metadata) => {
        estado = ?,
        responsable_id = ?,
        responsable_nombre = ?,
+       responsable_cargo = ?,
+       responsable_email = ?,
+       fecha_aprobacion = ?,
        fecha_actualizacion = CURRENT_TIMESTAMP`,
       [
         metadata.nombreProyecto,
         metadata.departamento || '',
         metadata.version,
-        metadata.estado,
+        metadata.estado || 'Borrador',
         metadata.responsable?.id || '',
         metadata.responsable?.nombre || '',
+        metadata.responsable?.cargo || '',
+        metadata.responsable?.email || '',
+        metadata.fechaAprobacion || null,
       ]
     );
     
@@ -397,10 +531,13 @@ export const saveMetadata = async (metadata) => {
   }
 };
 
+export const updateMetadata = saveMetadata;
+
 export default {
   initAlcanceTables,
   getAlcanceData,
   calculateCompletitud,
   updateCompletitud,
   saveMetadata,
+  updateMetadata,
 };

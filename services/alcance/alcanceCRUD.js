@@ -12,8 +12,8 @@ export const addProceso = (proceso) => {
     const id = generateId();
     executeQuery(
       `INSERT INTO alcance_procesos 
-       (id, macroproceso, nombre_proceso, responsable_area, descripcion, estado, criticidad, fecha_inclusion, procesos_relacionados)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, macroproceso, nombre_proceso, responsable_area, descripcion, estado, criticidad, fecha_inclusion, procesos_relacionados, justificacion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         proceso.macroproceso,
@@ -24,6 +24,7 @@ export const addProceso = (proceso) => {
         proceso.criticidad || 'Media',
         proceso.fechaInclusion || new Date().toISOString(),
         JSON.stringify(proceso.procesosRelacionados || []),
+        proceso.justificacion || '',
       ]
     );
     logger.performanceEnd('addProceso');
@@ -41,7 +42,7 @@ export const updateProceso = (id, proceso) => {
     executeQuery(
       `UPDATE alcance_procesos SET 
        macroproceso = ?, nombre_proceso = ?, responsable_area = ?, descripcion = ?,
-       estado = ?, criticidad = ?, fecha_inclusion = ?, procesos_relacionados = ?,
+       estado = ?, criticidad = ?, fecha_inclusion = ?, procesos_relacionados = ?, justificacion = ?,
        updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
@@ -53,6 +54,7 @@ export const updateProceso = (id, proceso) => {
         proceso.criticidad,
         proceso.fechaInclusion,
         JSON.stringify(proceso.procesosRelacionados || []),
+        proceso.justificacion || '',
         id,
       ]
     );
@@ -166,10 +168,22 @@ export const deleteUnidad = (id) => {
   }
 };
 
+export const deleteAllUnidades = () => {
+  try {
+    executeQuery('DELETE FROM alcance_unidades');
+    const result = getFirstRow('SELECT COUNT(*) as count FROM alcance_unidades');
+    console.log(`🗑️ Todas las unidades eliminadas. Total restante: ${result?.count || 0}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error eliminando todas las unidades:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 export const getUnidades = () => {
   try {
     const rows = getAllRows('SELECT * FROM alcance_unidades ORDER BY created_at DESC') || [];
-    return rows.map(u => ({
+    const mapped = rows.map(u => ({
       id: u.id,
       nombreUnidad: u.nombre_unidad,
       tipo: u.tipo,
@@ -180,6 +194,7 @@ export const getUnidades = () => {
       incluida: Boolean(u.incluida),
       justificacion: u.justificacion,
     }));
+    return mapped;
   } catch (error) {
     console.error('Error obteniendo unidades:', error);
     return [];
@@ -195,19 +210,21 @@ export const addUbicacion = (ubicacion) => {
     const id = generateId();
     executeQuery(
       `INSERT INTO alcance_ubicaciones 
-       (id, nombre_sitio, direccion, tipo, activos_presentes, responsable_sitio, incluido, latitud, longitud, observaciones)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, nombre_sitio, direccion, tipo, tipos_activo, activos_presentes, responsable_sitio, incluido, latitud, longitud, observaciones, justificacion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         ubicacion.nombreSitio,
         ubicacion.direccion || '',
         ubicacion.tipo,
+        JSON.stringify(ubicacion.tiposActivo || []),
         JSON.stringify(ubicacion.activosPresentes || []),
         ubicacion.responsableSitio || '',
         ubicacion.incluido ? 1 : 0,
         ubicacion.coordenadas?.lat || null,
         ubicacion.coordenadas?.lng || null,
         ubicacion.observaciones || '',
+        ubicacion.justificacion || '',
       ]
     );
     return { success: true, id };
@@ -221,20 +238,22 @@ export const updateUbicacion = (id, ubicacion) => {
   try {
     executeQuery(
       `UPDATE alcance_ubicaciones SET 
-       nombre_sitio = ?, direccion = ?, tipo = ?, activos_presentes = ?,
-       responsable_sitio = ?, incluido = ?, latitud = ?, longitud = ?, observaciones = ?,
+       nombre_sitio = ?, direccion = ?, tipo = ?, tipos_activo = ?, activos_presentes = ?,
+       responsable_sitio = ?, incluido = ?, latitud = ?, longitud = ?, observaciones = ?, justificacion = ?,
        updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
         ubicacion.nombreSitio,
         ubicacion.direccion || '',
         ubicacion.tipo,
+        JSON.stringify(ubicacion.tiposActivo || []),
         JSON.stringify(ubicacion.activosPresentes || []),
         ubicacion.responsableSitio || '',
         ubicacion.incluido ? 1 : 0,
         ubicacion.coordenadas?.lat || null,
         ubicacion.coordenadas?.lng || null,
         ubicacion.observaciones || '',
+        ubicacion.justificacion || '',
         id,
       ]
     );
@@ -263,6 +282,7 @@ export const getUbicaciones = () => {
       nombreSitio: ub.nombre_sitio,
       direccion: ub.direccion,
       tipo: ub.tipo,
+      tiposActivo: ub.tipos_activo ? JSON.parse(ub.tipos_activo) : [],
       activosPresentes: ub.activos_presentes ? JSON.parse(ub.activos_presentes) : [],
       responsableSitio: ub.responsable_sitio,
       incluido: Boolean(ub.incluido),
@@ -284,19 +304,24 @@ export const addInfraestructura = (infra) => {
     const id = generateId();
     executeQuery(
       `INSERT INTO alcance_infraestructura 
-       (id, tipo_activo, identificador, ubicacion_id, propietario_area, sistema_operativo, funcion, criticidad, estado_activo, incluido_alcance)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, identificador, tipo_activo, sitio, unidad_negocio, ubicacion_fisica, propietario, 
+        sistema_operativo, funcion, criticidad, estado_activo, incluido, observaciones, justificacion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        infra.tipoActivo,
         infra.identificador,
-        infra.ubicacionId || '',
-        infra.propietarioArea || '',
+        infra.tipoActivo || '',
+        infra.sitio || '',
+        infra.unidadNegocio || '',
+        infra.ubicacionFisica || '',
+        infra.propietario || '',
         infra.sistemaOperativo || '',
         infra.funcion || '',
         infra.criticidad || 'Media',
         infra.estadoActivo || 'Activo',
-        infra.incluidoAlcance ? 1 : 0,
+        infra.incluido ? 1 : 0,
+        infra.observaciones || '',
+        infra.justificacion || '',
       ]
     );
     return { success: true, id };
@@ -310,20 +335,23 @@ export const updateInfraestructura = (id, infra) => {
   try {
     executeQuery(
       `UPDATE alcance_infraestructura SET 
-       tipo_activo = ?, identificador = ?, ubicacion_id = ?, propietario_area = ?,
-       sistema_operativo = ?, funcion = ?, criticidad = ?, estado_activo = ?, incluido_alcance = ?,
-       updated_at = CURRENT_TIMESTAMP
+       identificador = ?, tipo_activo = ?, sitio = ?, unidad_negocio = ?, ubicacion_fisica = ?,
+       propietario = ?, sistema_operativo = ?, funcion = ?, criticidad = ?, estado_activo = ?, 
+       incluido = ?, observaciones = ?, justificacion = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
-        infra.tipoActivo,
         infra.identificador,
-        infra.ubicacionId || '',
-        infra.propietarioArea || '',
+        infra.tipoActivo || '',
+        infra.sitio || '',
+        infra.unidadNegocio || '',
+        infra.ubicacionFisica || '',
+        infra.propietario || '',
         infra.sistemaOperativo || '',
         infra.funcion || '',
         infra.criticidad,
         infra.estadoActivo,
-        infra.incluidoAlcance ? 1 : 0,
+        infra.incluido ? 1 : 0,
+        infra.observaciones || '',
         id,
       ]
     );
@@ -349,15 +377,18 @@ export const getInfraestructura = () => {
     const rows = getAllRows('SELECT * FROM alcance_infraestructura ORDER BY created_at DESC') || [];
     return rows.map(i => ({
       id: i.id,
-      tipoActivo: i.tipo_activo,
       identificador: i.identificador,
-      ubicacionId: i.ubicacion_id,
-      propietarioArea: i.propietario_area,
+      tipoActivo: i.tipo_activo || '',
+      sitio: i.sitio,
+      unidadNegocio: i.unidad_negocio,
+      ubicacionFisica: i.ubicacion_fisica,
+      propietario: i.propietario,
       sistemaOperativo: i.sistema_operativo,
       funcion: i.funcion,
       criticidad: i.criticidad,
       estadoActivo: i.estado_activo,
-      incluidoAlcance: Boolean(i.incluido_alcance),
+      incluido: Boolean(i.incluido),
+      observaciones: i.observaciones,
     }));
   } catch (error) {
     console.error('Error obteniendo infraestructura:', error);
@@ -457,6 +488,7 @@ export default {
   addUnidad,
   updateUnidad,
   deleteUnidad,
+  deleteAllUnidades,
   getUnidades,
   addUbicacion,
   updateUbicacion,

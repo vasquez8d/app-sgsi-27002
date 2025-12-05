@@ -59,6 +59,13 @@ const AlcanceDashboard = ({ navigation }) => {
       setData(alcanceData);
       
       // Calcular estadísticas
+      // Calcular exclusiones totales (elementos NO incluidos de cada módulo)
+      const procesosExcluidos = alcanceData.procesos.filter(p => p.estado !== 'Incluido').length;
+      const unidadesExcluidas = alcanceData.unidades.filter(u => !u.incluida).length;
+      const ubicacionesExcluidas = alcanceData.ubicaciones.filter(u => !u.incluido).length;
+      const infraestructuraExcluida = alcanceData.infraestructura.filter(i => !i.incluido).length;
+      const totalExclusiones = procesosExcluidos + unidadesExcluidas + ubicacionesExcluidas + infraestructuraExcluida;
+
       const newStats = {
         procesosTotal: alcanceData.procesos.length,
         procesosIncluidos: alcanceData.procesos.filter(p => p.estado === 'Incluido').length,
@@ -67,9 +74,9 @@ const AlcanceDashboard = ({ navigation }) => {
         ubicacionesTotal: alcanceData.ubicaciones.length,
         ubicacionesIncluidas: alcanceData.ubicaciones.filter(u => u.incluido).length,
         infraestructuraTotal: alcanceData.infraestructura.length,
-        infraestructuraIncluida: alcanceData.infraestructura.filter(i => i.incluidoAlcance).length,
-        exclusionesTotal: alcanceData.exclusiones.length,
-        exclusionesPendientes: alcanceData.exclusiones.filter(e => e.revisionPendiente).length,
+        infraestructuraIncluida: alcanceData.infraestructura.filter(i => i.incluido).length,
+        exclusionesTotal: totalExclusiones,
+        exclusionesPendientes: 0, // Ya no hay revisiones pendientes en el nuevo diseño
       };
       setStats(newStats);
       
@@ -109,6 +116,8 @@ const AlcanceDashboard = ({ navigation }) => {
         subtitle="ISO/IEC 27001 - Punto 4.3"
         showBack
         onBack={() => navigation.goBack()}
+        rightIcon="settings-outline"
+        onRightPress={() => navigation.navigate('AlcanceConfig')}
       />
 
       <ScrollView
@@ -176,7 +185,7 @@ const AlcanceDashboard = ({ navigation }) => {
           <AlcanceCard
             icon={ALCANCE_ICONS.procesos}
             title="Procesos y Servicios"
-            metrics={`${stats.procesosIncluidos} de ${stats.procesosTotal} incluidos`}
+            metrics={`${stats.procesosIncluidos} de ${stats.procesosTotal} procesos incluidos en el alcance`}
             badge={{ count: stats.procesosTotal, color: ALCANCE_THEME.colors.primary }}
             lastUpdate={formatLastUpdate(data.metadata.fechaCreacion)}
             onPress={() => navigation.navigate('Procesos')}
@@ -185,7 +194,7 @@ const AlcanceDashboard = ({ navigation }) => {
           <AlcanceCard
             icon={ALCANCE_ICONS.unidades}
             title="Unidades Organizativas"
-            metrics={`${stats.unidadesIncluidas} de ${stats.unidadesTotal} en alcance`}
+            metrics={`${stats.unidadesIncluidas} de ${stats.unidadesTotal} unidades incluidas en el alcance`}
             badge={{ count: stats.unidadesTotal, color: ALCANCE_THEME.colors.primaryLight }}
             lastUpdate={formatLastUpdate(data.metadata.fechaCreacion)}
             onPress={() => navigation.navigate('Unidades')}
@@ -194,7 +203,7 @@ const AlcanceDashboard = ({ navigation }) => {
           <AlcanceCard
             icon={ALCANCE_ICONS.ubicaciones}
             title="Ubicaciones Físicas"
-            metrics={`${stats.ubicacionesIncluidas} de ${stats.ubicacionesTotal} sitios`}
+            metrics={`${stats.ubicacionesIncluidas} de ${stats.ubicacionesTotal} ubicaciones incluidas en el alcance`}
             badge={{ count: stats.ubicacionesTotal, color: ALCANCE_THEME.colors.info }}
             lastUpdate={formatLastUpdate(data.metadata.fechaCreacion)}
             onPress={() => navigation.navigate('Ubicaciones')}
@@ -203,7 +212,7 @@ const AlcanceDashboard = ({ navigation }) => {
           <AlcanceCard
             icon={ALCANCE_ICONS.infraestructura}
             title="Infraestructura TI"
-            metrics={`${stats.infraestructuraIncluida} de ${stats.infraestructuraTotal} activos`}
+            metrics={`${stats.infraestructuraIncluida} de ${stats.infraestructuraTotal} activos incluidos en el alcance`}
             badge={{ count: stats.infraestructuraTotal, color: ALCANCE_THEME.colors.success }}
             lastUpdate={formatLastUpdate(data.metadata.fechaCreacion)}
             onPress={() => navigation.navigate('Infraestructura')}
@@ -212,10 +221,10 @@ const AlcanceDashboard = ({ navigation }) => {
           <AlcanceCard
             icon={ALCANCE_ICONS.exclusiones}
             title="Exclusiones"
-            metrics={`${stats.exclusionesTotal} elementos excluidos`}
+            metrics={`${stats.exclusionesTotal} elementos excluidos del alcance`}
             badge={{ 
-              count: stats.exclusionesPendientes, 
-              color: stats.exclusionesPendientes > 0 ? ALCANCE_THEME.colors.danger : ALCANCE_THEME.colors.textSecondary 
+              count: stats.exclusionesTotal, 
+              color: stats.exclusionesTotal > 0 ? ALCANCE_THEME.colors.danger : ALCANCE_THEME.colors.textSecondary 
             }}
             lastUpdate={formatLastUpdate(data.metadata.fechaCreacion)}
             onPress={() => navigation.navigate('Exclusiones')}
@@ -247,9 +256,10 @@ const AlcanceDashboard = ({ navigation }) => {
             'Acciones Rápidas',
             'Seleccione una acción',
             [
+              { text: 'Configuración', onPress: () => navigation.navigate('AlcanceConfig') },
               { text: 'Agregar Proceso', onPress: () => navigation.navigate('Procesos') },
               { text: 'Agregar Unidad', onPress: () => navigation.navigate('Unidades') },
-              { text: 'Ver Resumen', onPress: () => navigation.navigate('Validacion') },
+              { text: 'Ver Validación', onPress: () => navigation.navigate('Validacion') },
               { text: 'Cancelar', style: 'cancel' },
             ]
           );

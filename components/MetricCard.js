@@ -1,14 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AnimatedCounter from './AnimatedCounter';
+import { responsiveConfig } from '../utils/responsive';
 
 /**
  * Card de métrica del dashboard con animaciones y feedback visual
  */
 const MetricCard = ({ 
   icon, 
-  iconSize = 16,
+  iconLibrary = 'Ionicons',
+  iconSize,
   iconColor, 
   value, 
   label, 
@@ -19,8 +21,11 @@ const MetricCard = ({
   onPress,
   testID,
   accessibilityLabel,
-  style
+  style,
+  width
 }) => {
+  const config = responsiveConfig.metricCard;
+  const finalIconSize = iconSize || config.iconSize;
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -40,6 +45,9 @@ const MetricCard = ({
   };
 
   const CardWrapper = onPress ? TouchableOpacity : View;
+  
+  // Seleccionar la biblioteca de íconos apropiada
+  const IconComponent = iconLibrary === 'MaterialCommunityIcons' ? MaterialCommunityIcons : Ionicons;
 
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
@@ -57,12 +65,15 @@ const MetricCard = ({
             backgroundColor,
             borderColor: isActive ? iconColor : borderColor,
             borderWidth: isActive ? 2 : 1,
+            width: width || config.minWidth,
+            padding: config.padding,
+            borderRadius: config.borderRadius,
           },
           isActive && styles.cardActive,
           style,
         ]}
       >
-        <Ionicons name={icon} size={iconSize} color={iconColor} />
+        <IconComponent name={icon} size={finalIconSize} color={iconColor} />
         <AnimatedCounter 
           value={value} 
           style={[styles.value, { color: valueColor || iconColor }]} 
@@ -73,11 +84,10 @@ const MetricCard = ({
   );
 };
 
+const config = responsiveConfig.metricCard;
+
 const styles = StyleSheet.create({
   card: {
-    padding: 8,
-    minWidth: 70,
-    borderRadius: 8,
     alignItems: 'center',
     marginRight: 6,
   },
@@ -89,12 +99,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   value: {
-    fontSize: 22,
+    fontSize: config.fontSize,
     fontWeight: '700',
     marginTop: 2,
   },
   label: {
-    fontSize: 11,
+    fontSize: config.labelSize,
     color: '#6B7280',
     marginTop: 1,
     fontWeight: '600',

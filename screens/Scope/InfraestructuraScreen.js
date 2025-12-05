@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,22 +7,30 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import SearchBar from '../../components/SearchBar';
-import Badge from '../../components/Badge';
+import SearchBarEnhanced from '../../components/SearchBarEnhanced';
+import TipoActivoInfraPickerFilter from '../../components/TipoActivoInfraPickerFilter';
+import EstadoActivoPickerFilter from '../../components/EstadoActivoPickerFilter';
+import CriticidadPickerFilter from '../../components/CriticidadPickerFilter';
+import InfraestructuraCard from '../../components/InfraestructuraCard';
+import FilterChip from '../../components/FilterChip';
+import MetricCard from '../../components/MetricCard';
 import EmptyState from '../../components/EmptyState';
 import Modal from '../../components/Modal';
 import { ALCANCE_THEME, TIPO_ACTIVO_INFRA, CRITICIDAD_LEVELS, ESTADO_ACTIVO } from '../../utils/alcanceConstants';
 import { getInfraestructura, addInfraestructura, updateInfraestructura, deleteInfraestructura } from '../../services/alcance/alcanceCRUD';
 import { updateCompletitud } from '../../services/alcance/alcanceService';
+import { insertInfraestructuraEjemplo } from '../../utils/insertInfraestructuraEjemplo';
+import { calculateMetricCardWidth } from '../../utils/responsive';
 import InfraestructuraForm from './InfraestructuraForm';
 
 const InfraestructuraScreen = ({ navigation }) => {
   const [infraestructura, setInfraestructura] = useState([]);
   const [filteredInfra, setFilteredInfra] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTipo, setSelectedTipo] = useState('Todos');
+  const [selectedTipoActivo, setSelectedTipoActivo] = useState('Todos');
   const [selectedCriticidad, setSelectedCriticidad] = useState('Todas');
   const [selectedEstado, setSelectedEstado] = useState('Todos');
   const [refreshing, setRefreshing] = useState(false);
@@ -35,21 +43,21 @@ const InfraestructuraScreen = ({ navigation }) => {
 
   useEffect(() => {
     applyFilters();
-  }, [searchQuery, selectedTipo, selectedCriticidad, selectedEstado, infraestructura]);
+  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado, infraestructura]);
 
-  const loadInfraestructura = () => {
+  const loadInfraestructura = useCallback(() => {
     const data = getInfraestructura();
     setInfraestructura(data);
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     loadInfraestructura();
     await updateCompletitud();
     setRefreshing(false);
-  };
+  }, [loadInfraestructura]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...infraestructura];
 
     if (searchQuery.trim() !== '') {
@@ -57,13 +65,14 @@ const InfraestructuraScreen = ({ navigation }) => {
       filtered = filtered.filter(
         (i) =>
           i.identificador.toLowerCase().includes(query) ||
-          i.tipoActivo.toLowerCase().includes(query) ||
-          i.propietarioArea?.toLowerCase().includes(query)
+          i.sitio?.toLowerCase().includes(query) ||
+          i.propietario?.toLowerCase().includes(query) ||
+          i.unidadNegocio?.toLowerCase().includes(query)
       );
     }
 
-    if (selectedTipo !== 'Todos') {
-      filtered = filtered.filter((i) => i.tipoActivo === selectedTipo);
+    if (selectedTipoActivo !== 'Todos') {
+      filtered = filtered.filter((i) => i.tipoActivo === selectedTipoActivo);
     }
 
     if (selectedCriticidad !== 'Todas') {
@@ -75,7 +84,7 @@ const InfraestructuraScreen = ({ navigation }) => {
     }
 
     setFilteredInfra(filtered);
-  };
+  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado, infraestructura]);
 
   const handleAddInfra = () => {
     setEditingInfra(null);
@@ -109,220 +118,292 @@ const InfraestructuraScreen = ({ navigation }) => {
     }
   };
 
-  const handleDeleteInfra = (id, identificador) => {
-    if (confirm(`¿Está seguro de eliminar "${identificador}"?`)) {
-      const result = deleteInfraestructura(id);
-      if (result.success) {
-        loadInfraestructura();
-        updateCompletitud();
-      } else {
-        alert('Error al eliminar infraestructura: ' + result.error);
-      }
-    }
+  const handleDeleteInfra = (id) => {
+    Alert.alert(
+      'Confirmar eliminación',
+      '¿Está seguro que desea eliminar este activo?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const result = deleteInfraestructura(id);
+            if (result.success) {
+              loadInfraestructura();
+              await updateCompletitud();
+            } else {
+              Alert.alert('Error', 'No se pudo eliminar el activo');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const getCriticidadColor = (criticidad) => {
-    switch (criticidad) {
-      case 'Crítica':
-        return ALCANCE_THEME.colors.error;
-      case 'Alta':
-        return '#FF6B35';
-      case 'Media':
-        return ALCANCE_THEME.colors.warning;
-      case 'Baja':
-        return ALCANCE_THEME.colors.success;
+  const handleInsertarEjemplos = () => {
+    Alert.alert(
+      'Cargar Datos de Ejemplo',
+      'Se cargarán 15 activos de infraestructura de ejemplo. Esta acción recreará la tabla.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cargar',
+          onPress: async () => {
+            const result = insertInfraestructuraEjemplo();
+            if (result.success) {
+              loadInfraestructura();
+              await updateCompletitud();
+              Alert.alert('Éxito', `Se cargaron ${result.count} activos de ejemplo`);
+            } else {
+              Alert.alert('Error', 'No se pudieron cargar los datos de ejemplo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBorrarTodos = () => {
+    Alert.alert(
+      'Confirmar eliminación',
+      `¿Está seguro que desea eliminar TODOS los ${infraestructura.length} activos? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar Todo',
+          style: 'destructive',
+          onPress: async () => {
+            infraestructura.forEach((infra) => {
+              deleteInfraestructura(infra.id);
+            });
+            loadInfraestructura();
+            await updateCompletitud();
+            Alert.alert('Éxito', 'Todos los activos han sido eliminados');
+          },
+        },
+      ]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setSelectedTipoActivo('Todos');
+    setSelectedCriticidad('Todas');
+    setSelectedEstado('Todos');
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery.trim() !== '' ||
+      selectedTipoActivo !== 'Todos' ||
+      selectedCriticidad !== 'Todas' ||
+      selectedEstado !== 'Todos'
+    );
+  }, [searchQuery, selectedTipoActivo, selectedCriticidad, selectedEstado]);
+
+  const getTipoActivoIcon = useCallback((tipo) => {
+    switch (tipo) {
+      case 'Personas':
+        return 'people-outline';
+      case 'Aplicaciones':
+        return 'apps-outline';
+      case 'Información':
+        return 'document-text-outline';
+      case 'Hardware':
+        return 'hardware-chip-outline';
+      case 'Infraestructura':
+        return 'server-outline';
+      case 'Servicios tercerizados':
+        return 'cloud-outline';
       default:
-        return ALCANCE_THEME.colors.textSecondary;
+        return 'cube-outline';
     }
-  };
+  }, []);
 
-  const getEstadoColor = (estado) => {
-    switch (estado) {
-      case 'Activo':
-        return ALCANCE_THEME.colors.success;
-      case 'Inactivo':
-        return ALCANCE_THEME.colors.textSecondary;
-      case 'Mantenimiento':
-        return ALCANCE_THEME.colors.warning;
-      case 'Retirado':
-        return ALCANCE_THEME.colors.error;
+  const getTipoActivoColor = useCallback((tipo) => {
+    switch (tipo) {
+      case 'Personas':
+        return '#8B5CF6';
+      case 'Aplicaciones':
+        return '#3B82F6';
+      case 'Información':
+        return '#10B981';
+      case 'Hardware':
+        return '#F59E0B';
+      case 'Infraestructura':
+        return '#EF4444';
+      case 'Servicios tercerizados':
+        return '#06B6D4';
       default:
-        return ALCANCE_THEME.colors.textSecondary;
+        return ALCANCE_THEME.colors.info;
     }
-  };
+  }, []);
 
-  const renderFilterChip = (label, isSelected, onPress) => (
-    <TouchableOpacity
-      style={[styles.filterChip, isSelected && styles.filterChipSelected]}
-      onPress={onPress}
-    >
-      <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+  const metrics = useMemo(() => {
+    const total = infraestructura.length;
+    const incluidos = infraestructura.filter((i) => i.incluido).length;
+    const criticidadAlta = infraestructura.filter((i) => i.criticidad === 'Alta').length;
+    const activos = infraestructura.filter((i) => i.estadoActivo === 'Activo').length;
+    
+    const porTipo = {};
+    Object.values(TIPO_ACTIVO_INFRA).forEach((tipo) => {
+      porTipo[tipo] = infraestructura.filter((i) => i.tipoActivo === tipo).length;
+    });
 
-  const renderInfraCard = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <MaterialCommunityIcons
-            name="server"
-            size={24}
-            color={ALCANCE_THEME.colors.primary}
-          />
-          <View style={styles.cardHeaderText}>
-            <Text style={styles.cardTitle}>{item.identificador}</Text>
-            <Text style={styles.cardSubtitle}>{item.tipoActivo}</Text>
-          </View>
-        </View>
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleEditInfra(item)}
-          >
-            <Ionicons name="pencil" size={20} color={ALCANCE_THEME.colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleDeleteInfra(item.id, item.identificador)}
-          >
-            <Ionicons name="trash-outline" size={20} color={ALCANCE_THEME.colors.error} />
-          </TouchableOpacity>
-        </View>
-      </View>
+    return { total, incluidos, criticidadAlta, activos, porTipo };
+  }, [infraestructura]);
 
-      <View style={styles.cardDetails}>
-        {item.propietarioArea && (
-          <View style={styles.detailRow}>
-            <Ionicons name="person" size={14} color={ALCANCE_THEME.colors.textSecondary} />
-            <Text style={styles.detailText}>{item.propietarioArea}</Text>
-          </View>
-        )}
-        {item.sistemaOperativo && (
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="chip" size={14} color={ALCANCE_THEME.colors.textSecondary} />
-            <Text style={styles.detailText}>{item.sistemaOperativo}</Text>
-          </View>
-        )}
-        {item.funcion && (
-          <View style={styles.detailRow}>
-            <Ionicons name="settings" size={14} color={ALCANCE_THEME.colors.textSecondary} />
-            <Text style={styles.detailText}>{item.funcion}</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.cardFooter}>
-        <Badge
-          text={item.criticidad}
-          color={getCriticidadColor(item.criticidad)}
-        />
-        <Badge
-          text={item.estadoActivo}
-          color={getEstadoColor(item.estadoActivo)}
-        />
-        <Badge
-          text={item.incluidoAlcance ? 'En Alcance' : 'Fuera'}
-          color={item.incluidoAlcance ? ALCANCE_THEME.colors.success : ALCANCE_THEME.colors.error}
-        />
-      </View>
-    </View>
-  );
+  const totalMetrics = 1 + Object.values(metrics.porTipo).filter(count => count > 0).length;
+  const cardWidth = useMemo(() => calculateMetricCardWidth(totalMetrics, 62, 6), [totalMetrics]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{infraestructura.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: ALCANCE_THEME.colors.success }]}>
-            {infraestructura.filter((i) => i.estadoActivo === 'Activo').length}
-          </Text>
-          <Text style={styles.statLabel}>Activos</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: ALCANCE_THEME.colors.error }]}>
-            {infraestructura.filter((i) => i.criticidad === 'Crítica').length}
-          </Text>
-          <Text style={styles.statLabel}>Críticos</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: ALCANCE_THEME.colors.primary }]}>
-            {infraestructura.filter((i) => i.incluidoAlcance).length}
-          </Text>
-          <Text style={styles.statLabel}>En Alcance</Text>
-        </View>
+      {/* Dashboard de Métricas Optimizado */}
+      <View style={styles.dashboardContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dashboardContent}
+          testID="metrics-dashboard"
+        >
+          <MetricCard
+            icon="cube-outline"
+            iconColor={ALCANCE_THEME.colors.primary}
+            value={metrics.total}
+            label="Total"
+            backgroundColor={`${ALCANCE_THEME.colors.primary}08`}
+            borderColor={`${ALCANCE_THEME.colors.primary}30`}
+            testID="metric-total"
+            accessibilityLabel={`Total de activos: ${metrics.total}`}
+            width={cardWidth}
+          />
+          {Object.keys(metrics.porTipo).map((tipo) => {
+            const count = metrics.porTipo[tipo];
+            if (count === 0) return null;
+            
+            const icon = getTipoActivoIcon(tipo);
+            const color = getTipoActivoColor(tipo);
+            const labelMap = {
+              'Personas': 'Person.',
+              'Aplicaciones': 'Apps',
+              'Información': 'Info',
+              'Hardware': 'Hard.',
+              'Infraestructura': 'Infra.',
+              'Servicios tercerizados': 'Serc. Terc.',
+            };
+            const displayLabel = labelMap[tipo] || tipo;
+
+            return (
+              <MetricCard
+                key={tipo}
+                icon={icon}
+                iconColor={color}
+                value={count}
+                label={displayLabel}
+                backgroundColor={`${color}08`}
+                borderColor={`${color}30`}
+                valueColor={color}
+                testID={`metric-${tipo}`}
+                accessibilityLabel={`${tipo}: ${count}`}
+                width={cardWidth}
+              />
+            );
+          })}
+        </ScrollView>
       </View>
 
+      {/* Búsqueda Mejorada */}
       <View style={styles.searchContainer}>
-        <SearchBar
-          placeholder="Buscar infraestructura..."
+        <SearchBarEnhanced
+          placeholder="Buscar por identificador, sitio, propietario..."
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersContainer}
-        contentContainerStyle={styles.filtersContent}
-      >
-        <Text style={styles.filterLabel}>Tipo:</Text>
-        {renderFilterChip('Todos', selectedTipo === 'Todos', () => setSelectedTipo('Todos'))}
-        {Object.keys(TIPO_ACTIVO_INFRA).map((key) =>
-          renderFilterChip(
-            TIPO_ACTIVO_INFRA[key],
-            selectedTipo === TIPO_ACTIVO_INFRA[key],
-            () => setSelectedTipo(TIPO_ACTIVO_INFRA[key])
-          )
-        )}
-      </ScrollView>
+      {/* Filtro de Tipo de Activo con Picker */}
+      <TipoActivoInfraPickerFilter
+        tiposActivo={TIPO_ACTIVO_INFRA}
+        selectedValue={selectedTipoActivo}
+        onValueChange={setSelectedTipoActivo}
+      />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersContainer}
-        contentContainerStyle={styles.filtersContent}
-      >
-        <Text style={styles.filterLabel}>Criticidad:</Text>
-        {renderFilterChip('Todas', selectedCriticidad === 'Todas', () => setSelectedCriticidad('Todas'))}
-        {Object.keys(CRITICIDAD_LEVELS).map((key) =>
-          renderFilterChip(
-            CRITICIDAD_LEVELS[key],
-            selectedCriticidad === CRITICIDAD_LEVELS[key],
-            () => setSelectedCriticidad(CRITICIDAD_LEVELS[key])
-          )
-        )}
-      </ScrollView>
+      {/* Filtro de Estado del Activo con Picker */}
+      <EstadoActivoPickerFilter
+        estadosActivo={ESTADO_ACTIVO}
+        selectedValue={selectedEstado}
+        onValueChange={setSelectedEstado}
+      />
 
+      {/* Filtro de Criticidad con Picker */}
+      <CriticidadPickerFilter
+        criticidades={CRITICIDAD_LEVELS}
+        selectedValue={selectedCriticidad}
+        onValueChange={setSelectedCriticidad}
+      />
+
+      {/* Botón limpiar filtros */}
+      {hasActiveFilters && (
+        <View style={styles.clearFiltersContainer}>
+          <TouchableOpacity
+            style={styles.clearFiltersButton}
+            onPress={clearAllFilters}
+          >
+            <Ionicons name="close-circle-outline" size={20} color={ALCANCE_THEME.colors.error} />
+            <Text style={styles.clearFiltersText}>Limpiar filtros</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Lista de infraestructura */}
       <FlatList
         data={filteredInfra}
-        renderItem={renderInfraCard}
+        renderItem={({ item }) => (
+          <InfraestructuraCard
+            infraestructura={item}
+            onEdit={handleEditInfra}
+            onDelete={handleDeleteInfra}
+          />
+        )}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <EmptyState
-            icon="hardware-chip-outline"
-            title="No hay infraestructura"
+            icon="server"
+            title="No hay activos de infraestructura"
             description={
-              searchQuery || selectedTipo !== 'Todos'
-                ? 'No se encontró infraestructura con los filtros aplicados'
+              hasActiveFilters
+                ? 'No se encontraron activos con los filtros aplicados'
                 : 'Agrega los primeros activos de infraestructura TI'
             }
           />
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={handleAddInfra}>
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
+      {/* FAB para agregar o cargar datos */}
+      {infraestructura.length === 0 ? (
+        <TouchableOpacity style={styles.fabExample} onPress={handleInsertarEjemplos}>
+          <MaterialCommunityIcons name="database-plus" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.fab} onPress={handleAddInfra}>
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          {/* <TouchableOpacity style={styles.fabDelete} onPress={handleBorrarTodos}>
+            <MaterialCommunityIcons name="delete-sweep" size={28} color="#FFFFFF" />
+          </TouchableOpacity> */}
+        </>
+      )}
 
-      <Modal visible={modalVisible} onClose={() => setModalVisible(false)} title={editingInfra ? 'Editar Infraestructura' : 'Nueva Infraestructura'}>
+      {/* Modal de formulario */}
+      <Modal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={editingInfra ? 'Editar Activo' : 'Nuevo Activo de Infraestructura'}
+      >
         <InfraestructuraForm
           infraestructura={editingInfra}
           onSave={handleSaveInfra}
@@ -338,27 +419,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: ALCANCE_THEME.colors.background,
   },
-  statsContainer: {
-    flexDirection: 'row',
+  dashboardContainer: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: ALCANCE_THEME.spacing.md,
-    paddingHorizontal: ALCANCE_THEME.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#E5E7EB',
   },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: ALCANCE_THEME.typography.fontWeightBold,
-    color: ALCANCE_THEME.colors.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: ALCANCE_THEME.colors.textSecondary,
-    marginTop: 4,
+  dashboardContent: {
+    paddingHorizontal: ALCANCE_THEME.spacing.sm,
+    paddingVertical: ALCANCE_THEME.spacing.sm,
+    gap: ALCANCE_THEME.spacing.xs,
   },
   searchContainer: {
     paddingHorizontal: ALCANCE_THEME.spacing.md,
@@ -368,102 +437,43 @@ const styles = StyleSheet.create({
   filtersContainer: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#E5E7EB',
   },
   filtersContent: {
     paddingHorizontal: ALCANCE_THEME.spacing.md,
     paddingVertical: ALCANCE_THEME.spacing.sm,
     alignItems: 'center',
+    gap: ALCANCE_THEME.spacing.xs,
+    paddingRight: ALCANCE_THEME.spacing.md,
   },
   filterLabel: {
     fontSize: 14,
-    fontWeight: ALCANCE_THEME.typography.fontWeightMedium,
-    color: ALCANCE_THEME.colors.textSecondary,
-    marginRight: ALCANCE_THEME.spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: ALCANCE_THEME.spacing.md,
-    paddingVertical: ALCANCE_THEME.spacing.xs,
-    borderRadius: ALCANCE_THEME.borderRadius.full,
-    backgroundColor: '#F5F5F5',
+    fontWeight: '600',
+    color: ALCANCE_THEME.colors.text,
     marginRight: ALCANCE_THEME.spacing.xs,
   },
-  filterChipSelected: {
-    backgroundColor: ALCANCE_THEME.colors.primary,
+  clearFiltersContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: ALCANCE_THEME.spacing.md,
+    paddingVertical: ALCANCE_THEME.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  filterChipText: {
-    fontSize: 13,
-    color: ALCANCE_THEME.colors.textSecondary,
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: ALCANCE_THEME.spacing.xs,
+    paddingVertical: ALCANCE_THEME.spacing.xs,
   },
-  filterChipTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: ALCANCE_THEME.typography.fontWeightMedium,
+  clearFiltersText: {
+    fontSize: 14,
+    color: ALCANCE_THEME.colors.error,
+    fontWeight: '500',
   },
   listContent: {
     padding: ALCANCE_THEME.spacing.md,
-    paddingBottom: 80,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: ALCANCE_THEME.borderRadius.md,
-    padding: ALCANCE_THEME.spacing.md,
-    marginBottom: ALCANCE_THEME.spacing.md,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: ALCANCE_THEME.spacing.sm,
-  },
-  cardHeaderLeft: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  cardHeaderText: {
-    marginLeft: ALCANCE_THEME.spacing.sm,
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: ALCANCE_THEME.typography.fontWeightBold,
-    color: ALCANCE_THEME.colors.text,
-    marginBottom: 2,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: ALCANCE_THEME.colors.textSecondary,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: ALCANCE_THEME.spacing.xs,
-  },
-  actionButton: {
-    padding: ALCANCE_THEME.spacing.xs,
-  },
-  cardDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ALCANCE_THEME.spacing.md,
-    marginBottom: ALCANCE_THEME.spacing.sm,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: 13,
-    color: ALCANCE_THEME.colors.textSecondary,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    gap: ALCANCE_THEME.spacing.xs,
-    flexWrap: 'wrap',
+    paddingBottom: 100,
   },
   fab: {
     position: 'absolute',
@@ -473,6 +483,38 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: ALCANCE_THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  fabExample: {
+    position: 'absolute',
+    right: ALCANCE_THEME.spacing.lg,
+    bottom: ALCANCE_THEME.spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: ALCANCE_THEME.colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  fabDelete: {
+    position: 'absolute',
+    right: ALCANCE_THEME.spacing.lg,
+    bottom: ALCANCE_THEME.spacing.lg + 70,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: ALCANCE_THEME.colors.error,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,

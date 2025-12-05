@@ -83,9 +83,11 @@ export const ESTADO_PROCESO = {
 };
 
 export const TIPO_UNIDAD = {
-  ESTRATEGICA: 'Estratégica',
-  OPERATIVA: 'Operativa',
-  SOPORTE: 'Soporte',
+  DIRECCION: 'Dirección',
+  GERENCIA: 'Gerencia',
+  DEPARTAMENTO: 'Departamento',
+  AREA: 'Área',
+  SECCION: 'Sección',
 };
 
 export const TIPO_UBICACION = {
@@ -94,6 +96,15 @@ export const TIPO_UBICACION = {
   OFICINA_REMOTA: 'Remoto',
   DATA_CENTER: 'Data Center',
   CLIENTE: 'Cliente',
+};
+
+export const TIPO_ACTIVO_UBICACION = {
+  PERSONAS: 'Personas',
+  APLICACIONES: 'Aplicaciones',
+  INFORMACION: 'Información',
+  HARDWARE: 'Hardware',
+  INFRAESTRUCTURA: 'Infraestructura',
+  SERVICIOS_TERCERIZADOS: 'Servicios tercerizados',
 };
 
 export const ESTADO_ALCANCE = {
@@ -117,15 +128,12 @@ export const ESTADO_ACTIVO = {
 };
 
 export const TIPO_ACTIVO_INFRA = {
-  SERVIDOR: 'Servidor',
-  ESTACION: 'Estación de Trabajo',
-  LAPTOP: 'Laptop',
-  RED: 'Dispositivo de Red',
-  ALMACENAMIENTO: 'Almacenamiento',
-  FIREWALL: 'Firewall',
-  BASE_DATOS: 'Base de Datos',
-  APLICACION: 'Aplicación',
-  OTRO: 'Otro',
+  PERSONAS: 'Personas',
+  APLICACIONES: 'Aplicaciones',
+  INFORMACION: 'Información',
+  HARDWARE: 'Hardware',
+  INFRAESTRUCTURA: 'Infraestructura',
+  SERVICIOS_TERCERIZADOS: 'Servicios tercerizados',
 };
 
 export const CATEGORIA_EXCLUSION = {

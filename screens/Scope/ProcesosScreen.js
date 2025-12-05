@@ -588,12 +588,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
-    paddingTop: 60,
-    paddingBottom: 10,
   },
   dashboardContent: {
-    paddingHorizontal: 8,
-    gap: 6,
+    paddingHorizontal: ALCANCE_THEME.spacing.sm,
+    paddingVertical: ALCANCE_THEME.spacing.sm,
+    gap: ALCANCE_THEME.spacing.xs,
   },
   metricCard: {
     backgroundColor: '#F9FAFB',

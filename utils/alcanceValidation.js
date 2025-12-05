@@ -33,6 +33,17 @@ export const validateProceso = (proceso) => {
     errors.estado = 'El estado es obligatorio';
   }
 
+  // Validación de justificación para exclusiones (ISO 27001:2013 Cláusula 4.3)
+  if (proceso.estado === 'Excluido') {
+    if (!proceso.justificacion || proceso.justificacion.trim() === '') {
+      errors.justificacion = 'La justificación es obligatoria para procesos excluidos (ISO 27001)';
+    } else if (proceso.justificacion.trim().length < 30) {
+      errors.justificacion = 'La justificación debe tener al menos 30 caracteres';
+    } else if (proceso.justificacion.length > 500) {
+      errors.justificacion = 'La justificación no puede exceder 500 caracteres';
+    }
+  }
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -93,12 +104,27 @@ export const validateUbicacion = (ubicacion) => {
     errors.tipo = 'El tipo de ubicación es obligatorio';
   }
 
+  if (!ubicacion.tiposActivo || !Array.isArray(ubicacion.tiposActivo) || ubicacion.tiposActivo.length === 0) {
+    errors.tiposActivo = 'Debe seleccionar al menos un tipo de activo';
+  }
+
   if (ubicacion.coordenadas) {
     if (ubicacion.coordenadas.lat < -90 || ubicacion.coordenadas.lat > 90) {
       errors.coordenadas = 'La latitud debe estar entre -90 y 90';
     }
     if (ubicacion.coordenadas.lng < -180 || ubicacion.coordenadas.lng > 180) {
       errors.coordenadas = 'La longitud debe estar entre -180 y 180';
+    }
+  }
+
+  // Validación de justificación para exclusiones (ISO 27001:2013 Cláusula 4.3)
+  if (!ubicacion.incluido) {
+    if (!ubicacion.justificacion || ubicacion.justificacion.trim() === '') {
+      errors.justificacion = 'La justificación es obligatoria para ubicaciones excluidas (ISO 27001)';
+    } else if (ubicacion.justificacion.trim().length < 30) {
+      errors.justificacion = 'La justificación debe tener al menos 30 caracteres';
+    } else if (ubicacion.justificacion.length > 500) {
+      errors.justificacion = 'La justificación no puede exceder 500 caracteres';
     }
   }
 
@@ -125,12 +151,31 @@ export const validateInfraestructura = (infra) => {
     errors.identificador = 'El identificador debe tener al menos 3 caracteres';
   }
 
+  if (!infra.sitio || infra.sitio.trim() === '') {
+    errors.sitio = 'El sitio es obligatorio';
+  }
+
+  if (!infra.propietario || infra.propietario.trim() === '') {
+    errors.propietario = 'El propietario es obligatorio';
+  }
+
   if (!infra.criticidad) {
     errors.criticidad = 'La criticidad es obligatoria';
   }
 
   if (!infra.estadoActivo) {
     errors.estadoActivo = 'El estado del activo es obligatorio';
+  }
+
+  // Validación de justificación para exclusiones (ISO 27001:2013 Cláusula 4.3)
+  if (!infra.incluido) {
+    if (!infra.justificacion || infra.justificacion.trim() === '') {
+      errors.justificacion = 'La justificación es obligatoria para activos excluidos (ISO 27001)';
+    } else if (infra.justificacion.trim().length < 30) {
+      errors.justificacion = 'La justificación debe tener al menos 30 caracteres';
+    } else if (infra.justificacion.length > 500) {
+      errors.justificacion = 'La justificación no puede exceder 500 caracteres';
+    }
   }
 
   return {

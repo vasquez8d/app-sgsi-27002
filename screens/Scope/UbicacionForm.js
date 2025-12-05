@@ -7,11 +7,12 @@ import {
   TextInput,
   Switch,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/Button';
-import { ALCANCE_THEME, TIPO_UBICACION } from '../../utils/alcanceConstants';
+import { ALCANCE_THEME, TIPO_UBICACION, TIPO_ACTIVO_UBICACION } from '../../utils/alcanceConstants';
 import { validateUbicacion } from '../../utils/alcanceValidation';
 
 const UbicacionForm = ({ ubicacion, onSave, onCancel }) => {
@@ -19,19 +20,26 @@ const UbicacionForm = ({ ubicacion, onSave, onCancel }) => {
     nombreSitio: ubicacion?.nombreSitio || '',
     direccion: ubicacion?.direccion || '',
     tipo: ubicacion?.tipo || '',
+    tiposActivo: ubicacion?.tiposActivo || [],
     activosPresentes: ubicacion?.activosPresentes || [],
     responsableSitio: ubicacion?.responsableSitio || '',
     incluido: ubicacion?.incluido !== undefined ? ubicacion.incluido : true,
     coordenadas: ubicacion?.coordenadas || { lat: null, lng: null },
     observaciones: ubicacion?.observaciones || '',
+    justificacion: ubicacion?.justificacion || '',
   });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [justificacionLength, setJustificacionLength] = useState(ubicacion?.justificacion?.length || 0);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setTouched((prev) => ({ ...prev, [field]: true }));
+
+    if (field === 'justificacion') {
+      setJustificacionLength(value.length);
+    }
 
     const validation = validateUbicacion({ ...formData, [field]: value });
     if (validation.errors[field]) {
@@ -112,6 +120,43 @@ const UbicacionForm = ({ ubicacion, onSave, onCancel }) => {
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.error} />
             <Text style={styles.errorText}>{errors.tipo}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>
+          Tipos de Activo <Text style={styles.required}>*</Text>
+        </Text>
+        <Text style={styles.helpText}>Seleccione uno o más tipos de activos presentes en esta ubicación</Text>
+        <View style={styles.checkboxContainer}>
+          {Object.values(TIPO_ACTIVO_UBICACION).map((tipo) => (
+            <TouchableOpacity
+              key={tipo}
+              style={styles.checkboxItem}
+              onPress={() => {
+                const newTipos = formData.tiposActivo.includes(tipo)
+                  ? formData.tiposActivo.filter((t) => t !== tipo)
+                  : [...formData.tiposActivo, tipo];
+                handleChange('tiposActivo', newTipos);
+              }}
+            >
+              <View style={[
+                styles.checkbox,
+                formData.tiposActivo.includes(tipo) && styles.checkboxChecked
+              ]}>
+                {formData.tiposActivo.includes(tipo) && (
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                )}
+              </View>
+              <Text style={styles.checkboxLabel}>{tipo}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {showError('tiposActivo') && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.error} />
+            <Text style={styles.errorText}>{errors.tiposActivo}</Text>
           </View>
         )}
       </View>
@@ -201,6 +246,54 @@ const UbicacionForm = ({ ubicacion, onSave, onCancel }) => {
           />
         </View>
       </View>
+
+      {/* Justificación de Exclusión - Solo si no está incluido */}
+      {!formData.incluido && (
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>
+            Justificación de Exclusión <Text style={styles.required}>*</Text>
+          </Text>
+          <Text style={styles.helpText}>
+            Según ISO 27001:2013 (Cláusula 4.3), debe documentar y justificar cualquier exclusión del alcance del SGSI.
+          </Text>
+          <TextInput
+            style={[
+              styles.textArea,
+              errors.justificacion && touched.justificacion && styles.inputError,
+            ]}
+            value={formData.justificacion}
+            onChangeText={(value) => handleChange('justificacion', value)}
+            onBlur={() => setTouched((prev) => ({ ...prev, justificacion: true }))}
+            placeholder="Ej: Ubicación en desuso, sin activos críticos desde 2024..."
+            placeholderTextColor={ALCANCE_THEME.colors.textSecondary}
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+          />
+          <View style={styles.charCountContainer}>
+            <Text style={[
+              styles.charCount,
+              justificacionLength < 30 && styles.charCountWarning
+            ]}>
+              {justificacionLength}/500 caracteres {justificacionLength < 30 && '(mínimo 30)'}
+            </Text>
+          </View>
+          {errors.justificacion && touched.justificacion && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.danger} />
+              <Text style={styles.errorText}>{errors.justificacion}</Text>
+            </View>
+          )}
+          {justificacionLength < 30 && justificacionLength > 0 && (
+            <View style={styles.warningContainer}>
+              <Ionicons name="warning" size={16} color={ALCANCE_THEME.colors.warning} />
+              <Text style={styles.warningText}>
+                Se requiere una justificación de al menos 30 caracteres para cumplir con ISO 27001
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.infoBox}>
         <Ionicons name="information-circle" size={20} color={ALCANCE_THEME.colors.primary} />
@@ -318,6 +411,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: ALCANCE_THEME.colors.textSecondary,
     marginTop: ALCANCE_THEME.spacing.xs,
+    marginBottom: ALCANCE_THEME.spacing.sm,
+  },
+  checkboxContainer: {
+    gap: ALCANCE_THEME.spacing.sm,
+  },
+  checkboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: ALCANCE_THEME.spacing.sm,
+    gap: ALCANCE_THEME.spacing.sm,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: ALCANCE_THEME.colors.border,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: ALCANCE_THEME.colors.primary,
+    borderColor: ALCANCE_THEME.colors.primary,
+  },
+  checkboxLabel: {
+    fontSize: 15,
+    color: ALCANCE_THEME.colors.text,
+    flex: 1,
+  },
+  charCountContainer: {
+    alignItems: 'flex-end',
+    marginTop: ALCANCE_THEME.spacing.xs,
+  },
+  charCount: {
+    fontSize: 12,
+    color: ALCANCE_THEME.colors.textSecondary,
+  },
+  charCountWarning: {
+    color: ALCANCE_THEME.colors.warning,
+    fontWeight: '600',
+  },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: ALCANCE_THEME.spacing.xs,
+    padding: ALCANCE_THEME.spacing.sm,
+    backgroundColor: ALCANCE_THEME.colors.warning + '15',
+    borderRadius: ALCANCE_THEME.borderRadius.sm,
+    gap: 6,
+  },
+  warningText: {
+    fontSize: 12,
+    color: ALCANCE_THEME.colors.warning,
+    flex: 1,
+    lineHeight: 16,
   },
   infoBox: {
     flexDirection: 'row',

@@ -17,23 +17,32 @@ import { validateInfraestructura } from '../../utils/alcanceValidation';
 
 const InfraestructuraForm = ({ infraestructura, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
-    tipoActivo: infraestructura?.tipoActivo || '',
     identificador: infraestructura?.identificador || '',
-    ubicacionId: infraestructura?.ubicacionId || '',
-    propietarioArea: infraestructura?.propietarioArea || '',
+    tipoActivo: infraestructura?.tipoActivo || '',
+    sitio: infraestructura?.sitio || '',
+    unidadNegocio: infraestructura?.unidadNegocio || '',
+    ubicacionFisica: infraestructura?.ubicacionFisica || '',
+    propietario: infraestructura?.propietario || '',
     sistemaOperativo: infraestructura?.sistemaOperativo || '',
     funcion: infraestructura?.funcion || '',
     criticidad: infraestructura?.criticidad || 'Media',
     estadoActivo: infraestructura?.estadoActivo || 'Activo',
-    incluidoAlcance: infraestructura?.incluidoAlcance !== undefined ? infraestructura.incluidoAlcance : true,
+    incluido: infraestructura?.incluido !== undefined ? infraestructura.incluido : true,
+    observaciones: infraestructura?.observaciones || '',
+    justificacion: infraestructura?.justificacion || '',
   });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [justificacionLength, setJustificacionLength] = useState(infraestructura?.justificacion?.length || 0);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setTouched((prev) => ({ ...prev, [field]: true }));
+
+    if (field === 'justificacion') {
+      setJustificacionLength(value.length);
+    }
 
     const validation = validateInfraestructura({ ...formData, [field]: value });
     if (validation.errors[field]) {
@@ -95,6 +104,25 @@ const InfraestructuraForm = ({ infraestructura, onSave, onCancel }) => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>
+          Identificador <Text style={styles.required}>*</Text>
+        </Text>
+        <TextInput
+          style={[styles.input, showError('identificador') && styles.inputError]}
+          placeholder="Ej: Servidor Aplicaciones APP-01"
+          value={formData.identificador}
+          onChangeText={(value) => handleChange('identificador', value)}
+          maxLength={100}
+        />
+        {showError('identificador') && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.error} />
+            <Text style={styles.errorText}>{errors.identificador}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>
           Tipo de Activo <Text style={styles.required}>*</Text>
         </Text>
         <View style={[styles.pickerContainer, showError('tipoActivo') && styles.inputError]}>
@@ -119,31 +147,60 @@ const InfraestructuraForm = ({ infraestructura, onSave, onCancel }) => {
 
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>
-          Identificador <Text style={styles.required}>*</Text>
+          Sitio <Text style={styles.required}>*</Text>
         </Text>
         <TextInput
-          style={[styles.input, showError('identificador') && styles.inputError]}
-          placeholder="Ej: SRV-WEB-01"
-          value={formData.identificador}
-          onChangeText={(value) => handleChange('identificador', value)}
-          maxLength={50}
+          style={[styles.input, showError('sitio') && styles.inputError]}
+          placeholder="Ej: Oficina Central"
+          value={formData.sitio}
+          onChangeText={(value) => handleChange('sitio', value)}
         />
-        {showError('identificador') && (
+        {showError('sitio') && (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.error} />
-            <Text style={styles.errorText}>{errors.identificador}</Text>
+            <Text style={styles.errorText}>{errors.sitio}</Text>
           </View>
         )}
       </View>
 
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Propietario/Área</Text>
+        <Text style={styles.label}>Unidad de Negocio</Text>
         <TextInput
           style={styles.input}
-          placeholder="Departamento responsable"
-          value={formData.propietarioArea}
-          onChangeText={(value) => handleChange('propietarioArea', value)}
+          placeholder="Ej: Informática"
+          value={formData.unidadNegocio}
+          onChangeText={(value) => handleChange('unidadNegocio', value)}
         />
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Ubicación Física</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Ej: Av. Javier Prado Este 2499, San Borja"
+          value={formData.ubicacionFisica}
+          onChangeText={(value) => handleChange('ubicacionFisica', value)}
+          multiline
+          numberOfLines={2}
+        />
+      </View>
+
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>
+          Propietario <Text style={styles.required}>*</Text>
+        </Text>
+        <TextInput
+          style={[styles.input, showError('propietario') && styles.inputError]}
+          placeholder="Ej: Gerencia de Informática"
+          value={formData.propietario}
+          onChangeText={(value) => handleChange('propietario', value)}
+        />
+        {showError('propietario') && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.error} />
+            <Text style={styles.errorText}>{errors.propietario}</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.fieldContainer}>
@@ -160,10 +217,11 @@ const InfraestructuraForm = ({ infraestructura, onSave, onCancel }) => {
         <Text style={styles.label}>Función</Text>
         <TextInput
           style={styles.input}
-          placeholder="Ej: Servidor de aplicaciones web"
+          placeholder="Ej: Servidor de aplicaciones corporativas"
           value={formData.funcion}
           onChangeText={(value) => handleChange('funcion', value)}
-          maxLength={200}
+          multiline
+          numberOfLines={2}
         />
       </View>
 
@@ -192,19 +250,80 @@ const InfraestructuraForm = ({ infraestructura, onSave, onCancel }) => {
       </View>
 
       <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Observaciones</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Información adicional relevante..."
+          value={formData.observaciones}
+          onChangeText={(value) => handleChange('observaciones', value)}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+      </View>
+
+      <View style={styles.fieldContainer}>
         <View style={styles.switchContainer}>
           <View style={styles.switchLabel}>
             <Text style={styles.label}>Incluir en el Alcance</Text>
             <Text style={styles.helpText}>¿Este activo forma parte del alcance del SGSI?</Text>
           </View>
           <Switch
-            value={formData.incluidoAlcance}
-            onValueChange={(value) => handleChange('incluidoAlcance', value)}
+            value={formData.incluido}
+            onValueChange={(value) => handleChange('incluido', value)}
             trackColor={{ false: '#DDD', true: ALCANCE_THEME.colors.primary }}
             thumbColor="#FFFFFF"
           />
         </View>
       </View>
+
+      {/* Justificación de Exclusión - Solo si no está incluido */}
+      {!formData.incluido && (
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>
+            Justificación de Exclusión <Text style={styles.required}>*</Text>
+          </Text>
+          <Text style={styles.helpText}>
+            Según ISO 27001:2013 (Cláusula 4.3), debe documentar y justificar cualquier exclusión del alcance del SGSI.
+          </Text>
+          <TextInput
+            style={[
+              styles.textArea,
+              errors.justificacion && touched.justificacion && styles.inputError,
+            ]}
+            value={formData.justificacion}
+            onChangeText={(value) => handleChange('justificacion', value)}
+            onBlur={() => setTouched((prev) => ({ ...prev, justificacion: true }))}
+            placeholder="Ej: Infraestructura legacy en proceso de descontinuación programada para Q1 2026..."
+            placeholderTextColor={ALCANCE_THEME.colors.textSecondary}
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+          />
+          <View style={styles.charCountContainer}>
+            <Text style={[
+              styles.charCount,
+              justificacionLength < 30 && styles.charCountWarning
+            ]}>
+              {justificacionLength}/500 caracteres {justificacionLength < 30 && '(mínimo 30)'}
+            </Text>
+          </View>
+          {errors.justificacion && touched.justificacion && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={16} color={ALCANCE_THEME.colors.danger} />
+              <Text style={styles.errorText}>{errors.justificacion}</Text>
+            </View>
+          )}
+          {justificacionLength < 30 && justificacionLength > 0 && (
+            <View style={styles.warningContainer}>
+              <Ionicons name="warning" size={16} color={ALCANCE_THEME.colors.warning} />
+              <Text style={styles.warningText}>
+                Se requiere una justificación de al menos 30 caracteres para cumplir con ISO 27001
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.infoBox}>
         <Ionicons name="information-circle" size={20} color={ALCANCE_THEME.colors.primary} />
@@ -258,9 +377,41 @@ const styles = StyleSheet.create({
     fontSize: 15,
     backgroundColor: '#FFF',
   },
+  textArea: {
+    minHeight: 80,
+    paddingTop: ALCANCE_THEME.spacing.sm,
+  },
   inputError: {
     borderColor: ALCANCE_THEME.colors.error,
     borderWidth: 2,
+  },
+  checkboxContainer: {
+    marginTop: ALCANCE_THEME.spacing.sm,
+    gap: ALCANCE_THEME.spacing.sm,
+  },
+  checkboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: ALCANCE_THEME.spacing.sm,
+    gap: ALCANCE_THEME.spacing.sm,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: ALCANCE_THEME.colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    backgroundColor: ALCANCE_THEME.colors.primary,
+    borderColor: ALCANCE_THEME.colors.primary,
+  },
+  checkboxLabel: {
+    fontSize: 15,
+    color: ALCANCE_THEME.colors.text,
   },
   pickerContainer: {
     borderWidth: 1,
@@ -296,6 +447,33 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: '#FFFFFF',
     fontWeight: ALCANCE_THEME.typography.fontWeightMedium,
+  },
+  charCountContainer: {
+    alignItems: 'flex-end',
+    marginTop: ALCANCE_THEME.spacing.xs,
+  },
+  charCount: {
+    fontSize: 12,
+    color: ALCANCE_THEME.colors.textSecondary,
+  },
+  charCountWarning: {
+    color: ALCANCE_THEME.colors.warning,
+    fontWeight: '600',
+  },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: ALCANCE_THEME.spacing.xs,
+    padding: ALCANCE_THEME.spacing.sm,
+    backgroundColor: ALCANCE_THEME.colors.warning + '15',
+    borderRadius: ALCANCE_THEME.borderRadius.sm,
+    gap: 6,
+  },
+  warningText: {
+    fontSize: 12,
+    color: ALCANCE_THEME.colors.warning,
+    flex: 1,
+    lineHeight: 16,
   },
   switchContainer: {
     flexDirection: 'row',

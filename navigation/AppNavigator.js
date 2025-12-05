@@ -15,6 +15,8 @@ import UnidadesScreen from '../screens/Scope/UnidadesScreen';
 import UbicacionesScreen from '../screens/Scope/UbicacionesScreen';
 import InfraestructuraScreen from '../screens/Scope/InfraestructuraScreen';
 import ExclusionesScreen from '../screens/Scope/ExclusionesScreen';
+import ValidacionScreen from '../screens/Scope/ValidacionScreen';
+import AlcanceConfigScreen from '../screens/Scope/AlcanceConfigScreen';
 
 // Other Module Screens
 import PoliciesScreen from '../screens/Policies/PoliciesScreen';
@@ -134,6 +136,38 @@ const AppNavigator = () => {
           component={ExclusionesScreen}
           options={({ navigation }) => ({
             title: 'Exclusiones del Alcance',
+            headerLeft: () => (
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={{ marginLeft: 15 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="Validacion" 
+          component={ValidacionScreen}
+          options={({ navigation }) => ({
+            title: 'Validación y Aprobación',
+            headerLeft: () => (
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={{ marginLeft: 15 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="AlcanceConfig" 
+          component={AlcanceConfigScreen}
+          options={({ navigation }) => ({
+            title: 'Configuración del Alcance',
             headerLeft: () => (
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
